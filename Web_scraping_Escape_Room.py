@@ -13,7 +13,7 @@
 #    TAG
 #
 # Falta extreure:
-#      la ubicació exacta (de moment sols esta la zona)
+#      la ubicació exacta (de moment sols esta la zona). A BCN per exemple surt la parada de metro mes propera, l'extreiem?
 #      els tags de tipus de escape (Accio, terror, aventura...)
 #      telefon del escape
 #      email del escape
@@ -23,6 +23,10 @@
 #      Puntuacions detallades dels comentaris si estan disponibles
 #
 # També falta filtrar correctament les URLs del site-map ja que es colen algunes d'incorrectes
+# El codi esta fatal, s'ha d'ordenar, crear funcions, afegir comentaris... Pero de funcionar funciona que ja es algo
+# Al final falta tota la part de crear la base de dades, les dades que siguin intervals es podrien subdividir en 2 columnes (rang max i rang min...)
+# Algunes sales al titol tenen "Proximamente", "Cerrada", "Cerrada temporalmente"... Aixo crec que sera interesant per crear una columna de datos amb el estat de la sala 0-Oberta, 1- Tancada, 2-Tancada temporalment, 2-Proxima obertura (i borrar la coletilla del titol)
+# Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
 
 
 import requests
