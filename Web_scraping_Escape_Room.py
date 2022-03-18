@@ -26,7 +26,17 @@
 # Al final falta tota la part de crear la base de dades, les dades que siguin intervals es podrien subdividir en 2 columnes (rang max i rang min...)
 # Algunes sales al titol tenen "Proximamente", "Cerrada", "Cerrada temporalmente"... Aixo crec que sera interesant per crear una columna de datos amb el estat de la sala 0-Oberta, 1- Tancada, 2-Tancada temporalment, 2-Proxima obertura (i borrar la coletilla del titol)
 # Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
-
+# Afegir wait times entre consultes si el status code no es correcte (temps exponencial d'espera)
+#
+# Xenia
+#   - Etiquetes cadira rodes, claustrofobia i angles (i si trobesim algun mes)
+#   - Dades d'empreses
+#   - Si hi ha temps el Pandas per guardar les coses 
+#
+# Jordi
+#   - Intentar contar hores lliures de la taula de disponibilitats
+#   - Intentar afegir Wait times entre consultes
+#
 
 import urllib.robotparser
 import requests
