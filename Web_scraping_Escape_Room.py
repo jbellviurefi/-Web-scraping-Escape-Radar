@@ -77,6 +77,11 @@ for link in soup.find_all('loc'):
             peopleAudience = " "
             category = " "
             horror = "-"
+            address = " "
+            genre = [ ]
+            subtype = [ ]
+            public = [ ]
+            language = [ ]
             embaracades = "SI"
             comentsPts = [-1,-1,-1,-1,-1]
             
@@ -121,6 +126,11 @@ for link in soup.find_all('loc'):
                     iclass = iTag.get("class")
                     if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
                         embaracades = "NO"  
+
+                if ((itemprop is not None and itemprop == "fa-map-marker-alt") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-map-marker-alt")):
+                    for child2 in iTag.parent.find_all("a"):
+                        for child3 in child2.descendants:
+                            address = child3  
                        
             divTags = roomSoup.find_all('div')
             for divTag in divTags:
@@ -143,6 +153,25 @@ for link in soup.find_all('loc'):
                 print("------------------------------------------.")
                 if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
                     print(divTag)
+
+                for child2 in divTag.parent.find_all("span"):
+                    divItemprop = child2.get("itemprop")
+                    divClass = child2.get("class")
+                    if ((divItemprop is not None and divItemprop == "genre") and (divClass is not None and len(divClass) >=2 and divClass[0] == "d-flex" and divClass[1] == "tag-name")):
+                        for child3 in child2.descendants:
+                            genre.append(str(child3).strip())
+                            
+                    if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-1"):
+                        for child3 in child2.descendants:
+                            subtype.append(str(child3).strip())
+                            
+                    if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-2"):
+                        for child3 in child2.descendants:
+                            public.append(str(child3).strip())
+                            
+                    #if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-3"):
+                    #    for child3 in child2.descendants:
+                    #        language.append(str(child3).strip())
             
                  
             print("ESCAPE NAME........"+escapeName)
@@ -156,6 +185,11 @@ for link in soup.find_all('loc'):
             print("DIFFICULTY........."+difficultyLevel)
             print("YEARS.............."+peopleAudience)
             print("TAG................"+category)
+            print("ADDRESS............"+address)
+            print("GENRE.............."+str(unique(genre)))
+            print("SUBTYPE............"+str(unique(subtype)))
+            print("PUBLIC............."+str(unique(public)))
+            print("LANGUAGE..........."+str(unique(language)))
             print("Embaraçades........"+embaracades)
             print("Comentaris General."+str(comentsPts[0]))
             print("Comentaris Ambient."+str(comentsPts[1]))
