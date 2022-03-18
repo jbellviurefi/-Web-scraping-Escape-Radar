@@ -41,6 +41,8 @@
 import urllib.robotparser
 import requests
 from bs4 import BeautifulSoup
+import datetime
+from dateutil.relativedelta import relativedelta
 
 def buscarElement(iTag,tosearch,defValue):
     toret = defValue
@@ -52,6 +54,14 @@ def buscarElement(iTag,tosearch,defValue):
                 toret = child3
     return toret
 
+def unique(list1):
+    unique_list = []
+    for x in list1:
+        if x not in unique_list:
+            unique_list.append(x)
+    return unique_list
+    
+    
 url = 'https://www.escaperadar.com'
 url_sitemap = url + '/sitemap.xml'
 url_robots = url + '/robots.txt'
@@ -94,6 +104,8 @@ for link in soup.find_all('loc'):
             language = [ ]
             embaracades = "SI"
             comentsPts = [-1,-1,-1,-1,-1]
+            disponibles = -1
+            ocupades = -1
             
             h = h + 1
             room =requests.get(child)
@@ -135,8 +147,10 @@ for link in soup.find_all('loc'):
                 if (embaracades == "SI"):
                     iclass = iTag.get("class")
                     if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
-                        embaracades = "NO"  
+                        embaracades = "NO" 
 
+                iclass = iTag.get("class")
+                itemprop = iTag.get("itemprop")
                 if ((itemprop is not None and itemprop == "fa-map-marker-alt") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-map-marker-alt")):
                     for child2 in iTag.parent.find_all("a"):
                         for child3 in child2.descendants:
@@ -160,10 +174,18 @@ for link in soup.find_all('loc'):
                                             comentsPts[pos-1] = comentsPts[pos-1] + float(str(child3))
                                 except ValueError:
                                     pass
-                print("------------------------------------------.")
+                
                 if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
-                    print(divTag)
-
+                    disponibles = 0
+                    ocupades = 0
+                    trTags = divTag.find_all('tr')
+                    for trTag in trTags:
+                        date_formated = datetime.datetime.now().strftime("%d/%m/%Y")
+                        if(not date_formated in str(trTag)):
+                            print("Not avui")
+                            disponibles = disponibles + str(trTag).count("btn available hour-block")
+                            ocupades = ocupades + str(trTag).count("btn reserved disabled hour-disabled")
+                    
                 for child2 in divTag.parent.find_all("span"):
                     divItemprop = child2.get("itemprop")
                     divClass = child2.get("class")
@@ -184,26 +206,30 @@ for link in soup.find_all('loc'):
                     #        language.append(str(child3).strip())
             
                  
-            print("ESCAPE NAME........"+escapeName)
-            print("VALORACIO.........."+punctuation)
-            print("TERROR............."+horror)
-            print("COMPANY NAME......."+companyName)
-            print("LOCATION ZONE......"+locationZone)
-            print("NUMBER OF PLAYERS.."+numberPlayers)
-            print("ESTIMATED TIME....."+timeRequired)
-            print("PRICE RANGE........"+aggregateOffer)
-            print("DIFFICULTY........."+difficultyLevel)
-            print("YEARS.............."+peopleAudience)
-            print("TAG................"+category)
-            print("ADDRESS............"+address)
-            print("GENRE.............."+str(unique(genre)))
-            print("SUBTYPE............"+str(unique(subtype)))
-            print("PUBLIC............."+str(unique(public)))
-            print("LANGUAGE..........."+str(unique(language)))
-            print("Embaraçades........"+embaracades)
-            print("Comentaris General."+str(comentsPts[0]))
-            print("Comentaris Ambient."+str(comentsPts[1]))
-            print("Comentaris Enigmas."+str(comentsPts[2]))
-            print("Comentaris Inmersi."+str(comentsPts[3]))
-            print("Comentaris Terror.."+str(comentsPts[4]))
+            print("ESCAPE NAME............"+escapeName)
+            print("VALORACIO.............."+punctuation)
+            print("TERROR................."+horror)
+            print("COMPANY NAME..........."+companyName)
+            print("LOCATION ZONE.........."+locationZone)
+            print("NUMBER OF PLAYERS......"+numberPlayers)
+            print("ESTIMATED TIME........."+timeRequired)
+            print("PRICE RANGE............"+aggregateOffer)
+            print("DIFFICULTY............."+difficultyLevel)
+            print("YEARS.................."+peopleAudience)
+            print("TAG...................."+category)
+            print("ADDRESS................"+address)
+            print("GENRE.................."+str(unique(genre)))
+            print("SUBTYPE................"+str(unique(subtype)))
+            print("PUBLIC................."+str(unique(public)))
+            print("LANGUAGE..............."+str(unique(language)))
+            print("Embaraçades............"+embaracades)
+            print("Comentaris General....."+str(comentsPts[0]))
+            print("Comentaris Ambient....."+str(comentsPts[1]))
+            print("Comentaris Enigmas....."+str(comentsPts[2]))
+            print("Comentaris Inmersi....."+str(comentsPts[3]))
+            print("Comentaris Terror......"+str(comentsPts[4]))
+            print("Hores disponibles......"+str(disponibles))
+            print("Hores ocupades........."+str(ocupades))
+            print("Hores totals..........."+str(disponibles+ocupades))
+            print("Percentatge Ocupades..."+str(round((ocupades/(disponibles+ocupades))*100,2))+" %")
             print("-----------------------------")
