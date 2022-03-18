@@ -29,9 +29,26 @@
 # Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
 
 
+import urllib.robotparser
 import requests
 from bs4 import BeautifulSoup
-r =requests.get('https://www.escaperadar.com/sitemap.xml')
+
+url = 'https://www.escaperadar.com'
+url_sitemap = url + '/sitemap.xml'
+url_robots = url + '/robots.txt'
+
+rp = urllib.robotparser.RobotFileParser()
+rp.set_url(url_robots)
+rp.read()
+print(rp)
+
+headers = {
+    'User-Agent': 'UOC 1.0',
+    #'From': 'youremail@domain.com'
+}
+
+
+r =requests.get(url_sitemap, headers = headers)
 soup = BeautifulSoup(r.content)
 h = 0
 for link in soup.find_all('loc'):
