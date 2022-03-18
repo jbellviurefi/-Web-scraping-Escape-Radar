@@ -33,6 +33,16 @@ import urllib.robotparser
 import requests
 from bs4 import BeautifulSoup
 
+def buscarElement(iTag,tosearch,defValue):
+    toret = defValue
+    itemprop = iTag.get("itemprop")
+    iclass = iTag.get("class")
+    if ((itemprop is not None and itemprop == tosearch) or (iclass is not None and len(iclass) >=2 and iclass[1] == tosearch)):
+        for child2 in iTag.parent.find_all("span"):
+            for child3 in child2.descendants:
+                toret = child3
+    return toret
+
 url = 'https://www.escaperadar.com'
 url_sitemap = url + '/sitemap.xml'
 url_robots = url + '/robots.txt'
@@ -53,7 +63,8 @@ soup = BeautifulSoup(r.content)
 h = 0
 for link in soup.find_all('loc'):
     for child in link.children:   
-        if "escaperadar.com/escape-room/" in child and h < 10:
+        if "escaperadar.com/escape-room/" in child and h < 19:
+        #if "www.escaperadar.com/escape-room/chicken-banana/psiquiatria-1" in child and h < 19:
         
             escapeName = " "
             companyName = " "
@@ -65,6 +76,8 @@ for link in soup.find_all('loc'):
             peopleAudience = " "
             category = " "
             horror = "-"
+            embaracades = "SI"
+            comentsPts = [-1,-1,-1,-1,-1]
             
             h = h + 1
             room =requests.get(child)
@@ -94,35 +107,38 @@ for link in soup.find_all('loc'):
                         horror = child3
             iTags = roomSoup.find_all('i')
             for iTag in iTags:
-                itemprop = iTag.get("itemprop")
-                iclass = iTag.get("class")
-                                
-                if ((itemprop is not None and itemprop == "numberOfPlayers") or (iclass is not None and len(iclass) >=2 and iclass[1] == "numberOfPlayers")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            numberPlayers = child3
+                if (numberPlayers == " "): numberPlayers = buscarElement(iTag,"numberOfPlayers"," ")
+                if (timeRequired == " "): timeRequired = buscarElement(iTag,"timeRequired"," ")
+                if (aggregateOffer == " "): aggregateOffer = buscarElement(iTag,"fa-euro-sign"," ")    
+                if (difficultyLevel == " "): difficultyLevel = buscarElement(iTag,"fa-brain"," ")
+                if (peopleAudience == " "): peopleAudience = buscarElement(iTag,"icon-people-white"," ")  
+                if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
                 
-                if ((itemprop is not None and itemprop == "timeRequired") or (iclass is not None and len(iclass) >=2 and iclass[1] == "timeRequired")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            timeRequired = child3
-                if ((itemprop is not None and itemprop == "fa-euro-sign") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-euro-sign")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            aggregateOffer = child3
-                if ((itemprop is not None and itemprop == "fa-brain") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-brain")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            difficultyLevel = child3
-                if ((itemprop is not None and itemprop == "icon-people-white") or (iclass is not None and len(iclass) >=2 and iclass[1] == "icon-people-white")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            peopleAudience = child3
-                if ((itemprop is not None and itemprop == "fa-tag") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-tag")):
-                    for child2 in iTag.parent.find_all("span"):
-                        for child3 in child2.descendants:
-                            category = child3
-        
+                if (embaracades == "SI"):
+                    iclass = iTag.get("class")
+                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
+                        embaracades = "NO"  
+                       
+            divTags = roomSoup.find_all('div')
+            for divTag in divTags:
+                divClass = divTag.get("class")
+                if(divClass is not None and len(divClass) >=2 and divClass[0] == "row" and divClass[1] == "box-puntuacio"):
+                    pos = 0
+                    for p in divTag.find_all('p'):
+                        if(p.get("class") is not None and len(p.get("class")) >= 1 and p.get("class")[0] == "txt_puntuacion"):
+                            for child3 in p.descendants:
+                                try:
+                                    if(pos < 5):
+                                        if(not "." in str(child3)):
+                                            comentsPts[pos] = float(str(child3))
+                                            pos = pos + 1
+                                        if("." in str(child3)):
+                                            comentsPts[pos-1] = comentsPts[pos-1] + float(str(child3))
+                                except ValueError:
+                                    pass
+                    
+                      
+                 
             print("ESCAPE NAME........"+escapeName)
             print("VALORACIO.........."+punctuation)
             print("TERROR............."+horror)
@@ -134,4 +150,10 @@ for link in soup.find_all('loc'):
             print("DIFFICULTY........."+difficultyLevel)
             print("YEARS.............."+peopleAudience)
             print("TAG................"+category)
+            print("Embaraçades........"+embaracades)
+            print("Comentaris General."+str(comentsPts[0]))
+            print("Comentaris Ambient."+str(comentsPts[1]))
+            print("Comentaris Enigmas."+str(comentsPts[2]))
+            print("Comentaris Inmersi."+str(comentsPts[3]))
+            print("Comentaris Terror.."+str(comentsPts[4]))
             print("-----------------------------")
