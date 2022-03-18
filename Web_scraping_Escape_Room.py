@@ -11,6 +11,7 @@
 #    DIFFICULTY
 #    YEARS
 #    TAG
+#    Notes dels comentaris quan estan disponibles
 #
 # Falta extreure:
 #      la ubicació exacta (de moment sols esta la zona). A BCN per exemple surt la parada de metro mes propera, l'extreiem?
@@ -20,10 +21,8 @@
 #      web del escape
 #      Logo de la empresa del escape
 #      Logo/Imatge del escape
-#      Puntuacions detallades dels comentaris si estan disponibles
 #
 # També falta filtrar correctament les URLs del site-map ja que es colen algunes d'incorrectes
-# El codi esta fatal, s'ha d'ordenar, crear funcions, afegir comentaris... Pero de funcionar funciona que ja es algo
 # Al final falta tota la part de crear la base de dades, les dades que siguin intervals es podrien subdividir en 2 columnes (rang max i rang min...)
 # Algunes sales al titol tenen "Proximamente", "Cerrada", "Cerrada temporalmente"... Aixo crec que sera interesant per crear una columna de datos amb el estat de la sala 0-Oberta, 1- Tancada, 2-Tancada temporalment, 2-Proxima obertura (i borrar la coletilla del titol)
 # Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
@@ -59,13 +58,15 @@ headers = {
 
 
 r =requests.get(url_sitemap, headers = headers)
+print(r.status_code)
 soup = BeautifulSoup(r.content)
 h = 0
 for link in soup.find_all('loc'):
     for child in link.children:   
-        if "escaperadar.com/escape-room/" in child and h < 19:
-        #if "www.escaperadar.com/escape-room/chicken-banana/psiquiatria-1" in child and h < 19:
-        
+        #if "escaperadar.com/escape-room/" in child and h < 19:
+        if "www.escaperadar.com/escape-room/granollers-experience/bandidos" in child and h < 19:
+            
+            
             escapeName = " "
             companyName = " "
             locationZone = " "
@@ -114,6 +115,8 @@ for link in soup.find_all('loc'):
                 if (peopleAudience == " "): peopleAudience = buscarElement(iTag,"icon-people-white"," ")  
                 if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
                 
+                if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
+                
                 if (embaracades == "SI"):
                     iclass = iTag.get("class")
                     if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
@@ -122,6 +125,7 @@ for link in soup.find_all('loc'):
             divTags = roomSoup.find_all('div')
             for divTag in divTags:
                 divClass = divTag.get("class")
+                divId = divTag.get("id")
                 if(divClass is not None and len(divClass) >=2 and divClass[0] == "row" and divClass[1] == "box-puntuacio"):
                     pos = 0
                     for p in divTag.find_all('p'):
@@ -136,8 +140,10 @@ for link in soup.find_all('loc'):
                                             comentsPts[pos-1] = comentsPts[pos-1] + float(str(child3))
                                 except ValueError:
                                     pass
-                    
-                      
+                print("------------------------------------------.")
+                if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
+                    print(divTag)
+            
                  
             print("ESCAPE NAME........"+escapeName)
             print("VALORACIO.........."+punctuation)
