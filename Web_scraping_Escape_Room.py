@@ -1,6 +1,6 @@
 
 #Es recullen amb exit les següents informacions:
-#   ESCAPE NAME
+#    ESCAPE NAME
 #    VALORACIO
 #    TERROR
 #    COMPANY NAME
@@ -12,32 +12,44 @@
 #    YEARS
 #    TAG
 #    Notes dels comentaris quan estan disponibles
+#    ADDRESS
+#    GENRE
+#    SUBTYPE
+#    PUBLIC
+#    APTE EMBARASSADES
+#    ANGLÈS
+#    ADAPTAT DIVERSITAT FUNCIONAL
+#    APTE CLAUSTROFÒBICS
+#    COMPANY ADDRESS
+#    COMPANY PHONE
+#    COMPANY EMAIL
+#    COMPANY WEB
+#    ROOM STATE
 #
 # Falta extreure:
-#      la ubicació exacta (de moment sols esta la zona). A BCN per exemple surt la parada de metro mes propera, l'extreiem?
-#      els tags de tipus de escape (Accio, terror, aventura...)
-#      telefon del escape
-#      email del escape
-#      web del escape
 #      Logo de la empresa del escape
 #      Logo/Imatge del escape
 #
-# També falta filtrar correctament les URLs del site-map ja que es colen algunes d'incorrectes
+# També falta filtrar correctament les URLs del site-map ja que es colen algunes d'incorrectes.
+#       XÈNIA: Crec que ho he arreglat una mica amb un condicional que hi he afegit al veure que retornava pàgines en blanc.
 # Al final falta tota la part de crear la base de dades, les dades que siguin intervals es podrien subdividir en 2 columnes (rang max i rang min...)
 # Algunes sales al titol tenen "Proximamente", "Cerrada", "Cerrada temporalmente"... Aixo crec que sera interesant per crear una columna de datos amb el estat de la sala 0-Oberta, 1- Tancada, 2-Tancada temporalment, 2-Proxima obertura (i borrar la coletilla del titol)
+#       XÈNIA: Ho he aconseguit treure del títol. Quan ho tinguem en un dataset podrem extreure els valors únics i substituïr-los pel que vulguem.
 # Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
 # Afegir wait times entre consultes si el status code no es correcte (temps exponencial d'espera)
 #
 # Xenia
-#   - Etiquetes cadira rodes, claustrofobia i angles (i si trobesim algun mes)
-#   - Dades d'empreses
-#   - Si hi ha temps el Pandas per guardar les coses 
+#   - Etiquetes cadira rodes, claustrofobia i angles (i si trobesim algun mes). FET. En principi he trobat aquests tres. Potser quan traiem totes les dades n'apareix algun más. 
+#   - Dades d'empreses. FET.
+#   - Extreure els estats tipus "(CERRADO)" del nom de la sala i guardar-los en una nova variable. FET.
+#   - Si hi ha temps el Pandas per guardar les coses. M'HO GUARDO PER MIRAR LA SETMANA QUE VE.
 #
 # Jordi
 #   - Intentar contar hores lliures de la taula de disponibilitats
 #   - Intentar afegir Wait times entre consultes
 #
 
+import re
 import urllib.robotparser
 import requests
 from bs4 import BeautifulSoup
@@ -73,7 +85,6 @@ print(rp)
 
 headers = {
     'User-Agent': 'UOC 1.0',
-    #'From': 'youremail@domain.com'
 }
 
 
@@ -88,6 +99,7 @@ for link in soup.find_all('loc'):
             
             
             escapeName = " "
+            punctuation = " "
             companyName = " "
             locationZone = " "
             numberPlayers = " "
@@ -102,17 +114,41 @@ for link in soup.find_all('loc'):
             subtype = [ ]
             public = [ ]
             language = [ ]
-            embaracades = "SI"
+            embarassades = "SI"
+            angles = "NO"
+            diversitatFuncional = "NO"
+            claustrofobia = "SI"
             comentsPts = [-1,-1,-1,-1,-1]
             disponibles = -1
             ocupades = -1
+            companyInformation = [ ]
+            companyInformation2 = [ ]
+            companyAddress = " "
+            companyPhone = " "
+            companyEmail = " "
+            companyWeb = " "
+            state = " "
             
             h = h + 1
             room =requests.get(child)
             roomSoup = BeautifulSoup(room.content)
             titleTag = roomSoup.find('h1')
-            for child2 in titleTag.descendants:
-                escapeName = child2
+
+            # Hi he afegit aquesta condició perquè he vist que és el que feia que fallés a vegades. Retorna algunes pàgines que
+            # llegeix com una sala però queno tenen nom definit ni info. D'aquesta manera retorna únicament els que tenen valor a h1.
+            if(titleTag is not None):
+                for child2 in titleTag.descendants:
+                    escapeNameFull = child2
+
+                    escapeName = re.sub("[\(\[].*?[\)\]]", "", escapeNameFull)
+                    
+                    state = re.search(r'\((.*?)\)', escapeNameFull)
+                    
+                    if (state is not None):
+                        state = state.group(1)
+                    else:
+                        state = "-"
+
             companyTag = roomSoup.find_all('a')
             for child2 in companyTag:
                 v = child2.get("class")
@@ -144,10 +180,25 @@ for link in soup.find_all('loc'):
                 
                 if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
                 
-                if (embaracades == "SI"):
+                if (embarassades == "SI"):
                     iclass = iTag.get("class")
                     if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
-                        embaracades = "NO" 
+                        embarassades = "NO" 
+
+                if (angles == "NO"):
+                    iclass = iTag.get("class")
+                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-globe"):
+                        angles = "SI"
+                        
+                if (diversitatFuncional == "NO"):
+                    iclass = iTag.get("class")
+                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-wheelchair"):
+                        diversitatFuncional = "SI"
+                        
+                if (claustrofobia == "SI"):
+                    iclass = iTag.get("class")
+                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-exclamation-circle"):
+                        claustrofobia = "NO" 
 
                 iclass = iTag.get("class")
                 itemprop = iTag.get("itemprop")
@@ -201,15 +252,42 @@ for link in soup.find_all('loc'):
                         for child3 in child2.descendants:
                             public.append(str(child3).strip())
                             
-                    #if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-3"):
-                    #    for child3 in child2.descendants:
-                    #        language.append(str(child3).strip())
+                if(divId is not None and divId == "mobile-empresa"):
+                    for child2 in divTag.parent.find_all("li"):
+                        for child3 in child2.parent.find_all("p"):
+                            pClass = child3.get("class")
+                            pText = child3.get("text")
+                            
+                            if (pClass is None):
+
+                                companyInformation.append(child3.text)
+                                
+                                companyAddress = unique(companyInformation[0:2])
+                                companyPhone = unique(companyInformation[-1:])
+                                
+                        for child3 in child2.parent.find_all("a"):
+                            
+                            companyInformation2.append(child3.text)
+                                                      
+                            if (len(companyInformation2) >3 ): 
+                                                        
+                                companyEmail = unique(companyInformation2[0:1])
+                                companyWeb = unique(companyInformation2[-1:])
+                            
+                            else:
+                                companyEmail = unique(companyInformation2[0:2])
+                                companyWeb = "-"
             
                  
             print("ESCAPE NAME............"+escapeName)
+            print("ROOM STATE............."+str(state))
             print("VALORACIO.............."+punctuation)
             print("TERROR................."+horror)
             print("COMPANY NAME..........."+companyName)
+            print("COMPANY ADDRESS........"+str(" ".join(companyAddress)))
+            print("COMPANY PHONE.........."+str(" ".join(companyPhone)))
+            print("COMPANY EMAIL.........."+str(" ".join(companyEmail)))
+            print("COMPANY WEB............"+str(" ".join(companyWeb)))
             print("LOCATION ZONE.........."+locationZone)
             print("NUMBER OF PLAYERS......"+numberPlayers)
             print("ESTIMATED TIME........."+timeRequired)
@@ -218,11 +296,13 @@ for link in soup.find_all('loc'):
             print("YEARS.................."+peopleAudience)
             print("TAG...................."+category)
             print("ADDRESS................"+address)
-            print("GENRE.................."+str(unique(genre)))
-            print("SUBTYPE................"+str(unique(subtype)))
-            print("PUBLIC................."+str(unique(public)))
-            print("LANGUAGE..............."+str(unique(language)))
-            print("Embaraçades............"+embaracades)
+            print("GENRE.................."+str(", ".join(unique(genre))))
+            print("SUBTYPE................"+str(", ".join(unique(subtype))))
+            print("PUBLIC................."+str(", ".join(unique(public))))
+            print("Embarassades..........."+embarassades)
+            print("Disponible anglès......"+angles)
+            print("Adaptat div funcional.."+diversitatFuncional)
+            print("Apte claustrofòbics...."+claustrofobia)
             print("Comentaris General....."+str(comentsPts[0]))
             print("Comentaris Ambient....."+str(comentsPts[1]))
             print("Comentaris Enigmas....."+str(comentsPts[2]))
