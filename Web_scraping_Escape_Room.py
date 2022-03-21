@@ -1,79 +1,227 @@
-
-#Es recullen amb exit les següents informacions:
-#    ESCAPE NAME
-#    VALORACIO
-#    TERROR
-#    COMPANY NAME
-#    LOCATION ZONE
-#    NUMBER OF PLAYERS
-#    ESTIMATED TIME
-#    PRICE RANGE
-#    DIFFICULTY
-#    YEARS
-#    TAG
-#    Notes dels comentaris quan estan disponibles
-#    ADDRESS
-#    GENRE
-#    SUBTYPE
-#    PUBLIC
-#    APTE EMBARASSADES
-#    ANGLÈS
-#    ADAPTAT DIVERSITAT FUNCIONAL
-#    APTE CLAUSTROFÒBICS
-#    COMPANY ADDRESS
-#    COMPANY PHONE
-#    COMPANY EMAIL
-#    COMPANY WEB
-#    ROOM STATE
-#
-# Falta extreure:
-#      Logo de la empresa del escape
-#      Logo/Imatge del escape
-#
-# També falta filtrar correctament les URLs del site-map ja que es colen algunes d'incorrectes.
-#       XÈNIA: Crec que ho he arreglat una mica amb un condicional que hi he afegit al veure que retornava pàgines en blanc.
-# Al final falta tota la part de crear la base de dades, les dades que siguin intervals es podrien subdividir en 2 columnes (rang max i rang min...)
-# Algunes sales al titol tenen "Proximamente", "Cerrada", "Cerrada temporalmente"... Aixo crec que sera interesant per crear una columna de datos amb el estat de la sala 0-Oberta, 1- Tancada, 2-Tancada temporalment, 2-Proxima obertura (i borrar la coletilla del titol)
-#       XÈNIA: Ho he aconseguit treure del títol. Quan ho tinguem en un dataset podrem extreure els valors únics i substituïr-los pel que vulguem.
-# Si el codi acaba sortint massa facil crec que tocara fer la disponibilitat d'hores. Si aconseguim dominar la flecha de siguiente del calendari crec que es facil contar disponibilitats, aixo podria servir per avaluar la demanda de les sales.
-# Afegir wait times entre consultes si el status code no es correcte (temps exponencial d'espera)
-#
-# Xenia
-#   - Etiquetes cadira rodes, claustrofobia i angles (i si trobesim algun mes). FET. En principi he trobat aquests tres. Potser quan traiem totes les dades n'apareix algun más. 
-#   - Dades d'empreses. FET.
-#   - Extreure els estats tipus "(CERRADO)" del nom de la sala i guardar-los en una nova variable. FET.
-#   - Si hi ha temps el Pandas per guardar les coses. M'HO GUARDO PER MIRAR LA SETMANA QUE VE.
-#
-# Jordi
-#   - Intentar contar hores lliures de la taula de disponibilitats
-#   - Intentar afegir Wait times entre consultes
-#
+# *************************************************************************
+# *  Universitat Oberta de Catalunya                                      *
+# *  Master de Data Science                                               *
+# *  Tipologia i cicle de vida de les dades - Pràctica 1                  *
+# *                                                                       *
+# *        W E B   S C R A P I N G   D E   E S C A P E   R A D A R        *
+# *                                                                       *
+# *  Autors:                                                              *
+# *   Jordi Bellciure Figueras                                            *
+# *   Xenia Casanovas Díez                                                *
+# *************************************************************************                                                                      
 
 import re
+import sys
+import time
 import urllib.robotparser
 import requests
 from bs4 import BeautifulSoup
 import datetime
 from dateutil.relativedelta import relativedelta
 
-def buscarElement(iTag,tosearch,defValue):
+# Funció que s'encarrega de fer la crida a les URLs.
+#  Realitza reintents separats per 5 segons que van incrementant de 5 en 5.
+#  Si s'arriba a un temps de 10 minuts entre intents i segueix donant error aborta el script
+def requestWebPage(url,headers):
+    status = 0
+    tries = 0
+    while status != 200:
+        r =requests.get(url,headers = headers)
+        status = r.status_code
+        if(status != 200 and tries >= 600):
+            print("Status Code: "+str(status))
+            print("Execution aborted (Number of tries :"+str(tries)+")")
+            sys.exit()
+        if(status != 200):
+            print("Status Code: "+str(status))
+            tries = tries + 5
+            time.sleep(tries)
+    return r
+
+# Funció per extreure informació emmagatzemada de forma similar al html
+def buscarElement(iTag,tosearch,defValue,secondTag):
     toret = defValue
     itemprop = iTag.get("itemprop")
     iclass = iTag.get("class")
     if ((itemprop is not None and itemprop == tosearch) or (iclass is not None and len(iclass) >=2 and iclass[1] == tosearch)):
-        for child2 in iTag.parent.find_all("span"):
+        for child2 in iTag.parent.find_all(secondTag):
             for child3 in child2.descendants:
                 toret = child3
     return toret
 
+# Eliminar duplicats d'una llista
 def unique(list1):
     unique_list = []
     for x in list1:
         if x not in unique_list:
             unique_list.append(x)
     return unique_list
+
+# Funció per analitzar i buscar possibles restriccions d'una escape room que s'emmagatzemen similar al html
+def buscarRestriccions (iTag,defaultValue,locatedValue,actualValue,code):
+    if (actualValue == defaultValue):
+       iclass = iTag.get("class")
+       if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == code):
+           return  locatedValue
+    return defaultValue
     
+# Classe que emmagatzema les dades d'una sala d'Escape Room
+class EscapeRoom:
+    def __init__(self):
+        self.id = -1
+        self.name = " "
+        self.punctuation = " "
+        self.companyName = " "
+        self.locZone = " "
+        self.nPlayers = " "
+        self.timelapse = " "
+        self.lowPrice = -1
+        self.highPrice = -1
+        self.difLevel = " "
+        self.audience = " "
+        self.category = " "
+        self.horror = "-"
+        self.address = " "
+        self.genre = [ ]
+        self.subtype = [ ]
+        self.public = [ ]
+        self.language = [ ]
+        self.pregnant = "SI"
+        self.english = "NO"
+        self.funcDiversity = "NO"
+        self.claustrofobia = "SI"
+        self.comentsPts = [-1,-1,-1,-1,-1]
+        self.availableTimes = -1
+        self.unavailableTimes = -1
+        self.companyAddress = " "
+        self.companyPhone = " "
+        self.companyEmail = " "
+        self.companyWeb = " "
+        self.state = " "   
     
+    def setPrice(self, price):
+        price = price.replace('.','')
+        price = price.replace(',','.')
+        if ('-' in price):
+            p = price.split('-')
+            self.lowPrice  = float(p[0].strip())
+            self.highPrice = float(p[1].strip())
+        else:
+            try:
+              self.lowPrice = float(price.strip())
+              self.highprice = float(price.strip())
+            except:
+                pass
+
+    def addPublic(self,toadd):
+        if(toadd is not None): 
+            self.public.append(toadd)
+            self.public = unique(self.public)
+    
+    def addGenre(self,toadd):
+        if(toadd is not None): 
+            self.genre.append(toadd)
+            self.genre = unique(self.genre)
+
+    def addSubtype(self,toadd):
+        if(toadd is not None): 
+            self.subtype.append(toadd)
+            self.subtype = unique(self.subtype)
+    
+    def getPercAvailable(self):
+        return round((self.availableTimes / (self.availableTimes + self.unavailableTimes))*100,2)
+    
+    def generateCSV(self):
+        csv = str(self.id)
+        csv = csv + ";" + self.name
+        csv = csv + ";" + self.punctuation
+        csv = csv + ";" + self.horror
+        csv = csv + ";" + self.locZone
+        csv = csv + ";" + self.address
+        csv = csv + ";" + self.nPlayers
+        csv = csv + ";" + self.timelapse
+    
+    def printEscapeRoom(self):
+        print(" ")
+        print(" < "+self.name+" > ")
+        print(" ")
+        print("  ID....................."+str(self.id))
+        print("  Estat.................."+str(self.state))
+        print("  Valoració.............."+self.punctuation)
+        print("  Terror................."+self.horror)
+        print("  Ciutat................."+self.locZone)
+        print("  Adreça................."+self.address)
+        print("  Numero de jugadors....."+self.nPlayers)
+        print("  Temps estimat.........."+self.timelapse)
+        print("  Rang de preu..........."+str(self.lowPrice)+"€ - "+str(self.highPrice)+"€")
+        print("  Dificultat............."+self.difLevel)
+        print("  Edats.................."+self.audience)
+        print("  Públic objectiu........"+str(", ".join(self.public)))
+        print("  Genere................."+str(", ".join(self.genre)))
+        print("  Subtipus..............."+str(", ".join(self.subtype)))
+        print("  Categories............."+self.category)
+        print("  Embarassades..........."+self.pregnant)
+        print("  Disponible anglès......"+self.english)
+        print("  Adaptat div funcional.."+self.funcDiversity)
+        print("  Apte claustrofòbics...."+self.claustrofobia)
+        print("  VALORACIO DETALLADA")
+        if (self.comentsPts[0] == -1):
+            print ("    No Disponible")
+        else:
+            print("    Comentaris General..."+str(self.comentsPts[0]))
+            print("    Comentaris Ambient..."+str(self.comentsPts[1]))
+            print("    Comentaris Enigmas..."+str(self.comentsPts[2]))
+            print("    Comentaris Inmersi..."+str(self.comentsPts[3]))
+            print("    Comentaris Terror...."+str(self.comentsPts[4]))
+        print("  DISPONIBILITATS")
+        if (self.availableTimes == -1):
+            print ("    No Disponible")
+        else:
+            print("    Hores disponibles...."+str(self.availableTimes))
+            print("    Hores ocupades......."+str(self.unavailableTimes))
+            print("    Hores totals........."+str(self.availableTimes+self.unavailableTimes))
+            print("    Percentatge Ocupades."+str(self.getPercAvailable())+" %")
+        print("  INFORMACIÓ EMRPESA")
+        print("    Nom.................."+self.companyName)
+        print("    Adreça..............."+str(" ".join(self.companyAddress)))
+        print("    Telefon.............."+str(" ".join(self.companyPhone)))
+        print("    E-mail..............."+str(" ".join(self.companyEmail)))
+        print("    Pàgina web..........."+str(" ".join(self.companyWeb)))
+        print(" ")
+        print(" ")
+  
+# Estructura amb que emmagatzema totes les sales de Escape Room
+class EscapeRoomList:
+    def __init__(self):
+        self.escapeRoomList = [ ]
+        self.nEscapes = 0
+        
+    def addEscape(self,toadd):
+        self.escapeRoomList.append(toadd)
+        self.nEscapes = self.nEscapes + 1
+        
+    def printAll(self):
+        for escape in self.escapeRoomList:
+            escape.printEscapeRoom()
+    
+    def getNextId(self):
+        return self.nEscapes
+            
+
+print("*************************************************************************")
+print("*  Universitat Oberta de Catalunya                                      *")
+print("*  Master de Data Science                                               *")
+print("*  Tipologia i cicle de vida de les dades - Pràctica 1                  *")
+print("*                                                                       *")
+print("*        W E B   S C R A P I N G   D E   E S C A P E   R A D A R        *")
+print("*                                                                       *")
+print("*  Autors:                                                              *")
+print("*   Jordi Bellciure Figueras                                            *")
+print("*   Xenia Casanovas Díez                                                *")
+print("*************************************************************************")
+print("                                                                         ")
+
+# URLs de partida
 url = 'https://www.escaperadar.com'
 url_sitemap = url + '/sitemap.xml'
 url_robots = url + '/robots.txt'
@@ -86,53 +234,35 @@ print(rp)
 headers = {
     'User-Agent': 'UOC 1.0',
 }
-
-
-r =requests.get(url_sitemap, headers = headers)
-print(r.status_code)
+r = requestWebPage(url_sitemap, headers)
 soup = BeautifulSoup(r.content)
-h = 0
+escapeRoomList = EscapeRoomList()
+
+# Indicates the number of Escapes Rooms that are going to be collected. -1 to set to All
+nEscapes = 50
+
+if( nEscapes > 0 ):
+    print("WARNING")
+    print("   The max number of escape rooms to retrieve is limitet to "+ str(nEscapes))
+    print(" ")
+    
 for link in soup.find_all('loc'):
-    for child in link.children:   
-        #if "escaperadar.com/escape-room/" in child and h < 19:
-        if "www.escaperadar.com/escape-room/granollers-experience/bandidos" in child and h < 19:
+    for roomUrl in link.children:   
+        if "escaperadar.com/escape-room/" in roomUrl and nEscapes >= 0:
+        #if "www.escaperadar.com/escape-room/granollers-experience/bandidos" in roomUrl and h < 19:
             
+            escapeRoom = EscapeRoom()
+            companyInfo = [ ]
+            companyInfo2 = [ ]
             
-            escapeName = " "
-            punctuation = " "
-            companyName = " "
-            locationZone = " "
-            numberPlayers = " "
-            timeRequired = " "
-            aggregateOffer = " "
-            difficultyLevel = " "
-            peopleAudience = " "
-            category = " "
-            horror = "-"
-            address = " "
-            genre = [ ]
-            subtype = [ ]
-            public = [ ]
-            language = [ ]
-            embarassades = "SI"
-            angles = "NO"
-            diversitatFuncional = "NO"
-            claustrofobia = "SI"
-            comentsPts = [-1,-1,-1,-1,-1]
-            disponibles = -1
-            ocupades = -1
-            companyInformation = [ ]
-            companyInformation2 = [ ]
-            companyAddress = " "
-            companyPhone = " "
-            companyEmail = " "
-            companyWeb = " "
-            state = " "
+            room = requestWebPage(roomUrl, headers)
             
-            h = h + 1
-            room =requests.get(child)
+            nEscapes = nEscapes - 1
+            
             roomSoup = BeautifulSoup(room.content)
             titleTag = roomSoup.find('h1')
+
+            escapeRoom.id = escapeRoomList.getNextId()
 
             # Hi he afegit aquesta condició perquè he vist que és el que feia que fallés a vegades. Retorna algunes pàgines que
             # llegeix com una sala però queno tenen nom definit ni info. D'aquesta manera retorna únicament els que tenen valor a h1.
@@ -140,15 +270,16 @@ for link in soup.find_all('loc'):
                 for child2 in titleTag.descendants:
                     escapeNameFull = child2
 
-                    escapeName = re.sub("[\(\[].*?[\)\]]", "", escapeNameFull)
+                    escapeRoom.name = re.sub("[\(\[].*?[\)\]]", "", escapeNameFull)
                     
-                    state = re.search(r'\((.*?)\)', escapeNameFull)
+                    states = re.search(r'\((.*?)\)', escapeNameFull)
                     
-                    if (state is not None):
-                        state = state.group(1)
+                    if (states is not None):
+                        escapeRoom.state = states.group(1)
                     else:
-                        state = "-"
+                        escapeRoom.state = "Oberta"
 
+            # Look for Escape Name and the zone where is located which are inside an "a" tag
             companyTag = roomSoup.find_all('a')
             for child2 in companyTag:
                 v = child2.get("class")
@@ -156,57 +287,38 @@ for link in soup.find_all('loc'):
                     for c in v:
                         if c == "company-name":
                             for child3 in child2.descendants:
-                                companyName = child3
+                                escapeRoom.companyName = child3
                         if c == "location-link":
                             for child3 in child2.descendants:
-                                locationZone = child3
+                                escapeRoom.locZone = child3
+            
+            # Search for the punctuation and horror
             spanTags = roomSoup.find_all('span')
             for spanTag in spanTags:
                 spanTagTitle = spanTag.get("title")
                 if spanTagTitle == "Puntuación de usuarios Escape Radar":
                     for child3 in spanTag.descendants:
-                        punctuation = child3
+                        escapeRoom.punctuation = child3.replace(',','.')
                 if spanTagTitle == "Puntuación terror":
                     for child3 in spanTag.descendants:
-                        horror = child3
+                        escapeRoom.horror = child3
+            
             iTags = roomSoup.find_all('i')
             for iTag in iTags:
-                if (numberPlayers == " "): numberPlayers = buscarElement(iTag,"numberOfPlayers"," ")
-                if (timeRequired == " "): timeRequired = buscarElement(iTag,"timeRequired"," ")
-                if (aggregateOffer == " "): aggregateOffer = buscarElement(iTag,"fa-euro-sign"," ")    
-                if (difficultyLevel == " "): difficultyLevel = buscarElement(iTag,"fa-brain"," ")
-                if (peopleAudience == " "): peopleAudience = buscarElement(iTag,"icon-people-white"," ")  
-                if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
+                if (escapeRoom.nPlayers == " "):   escapeRoom.nPlayers   = buscarElement(iTag,"numberOfPlayers"," ","span")
+                if (escapeRoom.timelapse == " "):  escapeRoom.timelapse  = buscarElement(iTag,"timeRequired"," ","span")
+                if (escapeRoom.lowPrice == -1): escapeRoom.setPrice(buscarElement(iTag,"fa-euro-sign"," ","span"))
+                if (escapeRoom.difLevel == " "):   escapeRoom.difLevel   = buscarElement(iTag,"fa-brain"," ","span")
+                if (escapeRoom.audience == " "):   escapeRoom.audience   = buscarElement(iTag,"icon-people-white"," ","span")  
+                if (escapeRoom.category == " "):   escapeRoom.category   = buscarElement(iTag,"fa-tag"," ","span")
+                if (escapeRoom.address == " "):    escapeRoom.address    = buscarElement(iTag,"fa-map-marker-alt"," ","a")
                 
-                if (category == " "): category = buscarElement(iTag,"fa-tag"," ")  
-                
-                if (embarassades == "SI"):
-                    iclass = iTag.get("class")
-                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-female"):
-                        embarassades = "NO" 
-
-                if (angles == "NO"):
-                    iclass = iTag.get("class")
-                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-globe"):
-                        angles = "SI"
-                        
-                if (diversitatFuncional == "NO"):
-                    iclass = iTag.get("class")
-                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-wheelchair"):
-                        diversitatFuncional = "SI"
-                        
-                if (claustrofobia == "SI"):
-                    iclass = iTag.get("class")
-                    if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == "fa-exclamation-circle"):
-                        claustrofobia = "NO" 
-
-                iclass = iTag.get("class")
-                itemprop = iTag.get("itemprop")
-                if ((itemprop is not None and itemprop == "fa-map-marker-alt") or (iclass is not None and len(iclass) >=2 and iclass[1] == "fa-map-marker-alt")):
-                    for child2 in iTag.parent.find_all("a"):
-                        for child3 in child2.descendants:
-                            address = child3  
-                       
+                escapeRoom.pregnant = buscarRestriccions (iTag,"SI","NO",escapeRoom.pregnant,"fa-female")
+                escapeRoom.english = buscarRestriccions (iTag,"NO","SI",escapeRoom.english,"fa-globe")
+                escapeRoom.funcDiversity = buscarRestriccions (iTag,"NO","SI",escapeRoom.funcDiversity,"fa-wheelchair")
+                escapeRoom.claustrofobia = buscarRestriccions (iTag,"SI","NO",escapeRoom.claustrofobia,"fa-exclamation-circle")
+                           
+            # Search for the coments punctuations
             divTags = roomSoup.find_all('div')
             for divTag in divTags:
                 divClass = divTag.get("class")
@@ -219,38 +331,40 @@ for link in soup.find_all('loc'):
                                 try:
                                     if(pos < 5):
                                         if(not "." in str(child3)):
-                                            comentsPts[pos] = float(str(child3))
+                                            escapeRoom.comentsPts[pos] = float(str(child3))
                                             pos = pos + 1
                                         if("." in str(child3)):
-                                            comentsPts[pos-1] = comentsPts[pos-1] + float(str(child3))
+                                            escapeRoom.comentsPts[pos-1] = escapeRoom.comentsPts[pos-1] + float(str(child3))
                                 except ValueError:
                                     pass
                 
+                # Search for available and unavailable time slots
+                
                 if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
-                    disponibles = 0
-                    ocupades = 0
+                    escapeRoom.availableTimes = 0
+                    escapeRoom.unavailableTimes = 0
                     trTags = divTag.find_all('tr')
                     for trTag in trTags:
                         date_formated = datetime.datetime.now().strftime("%d/%m/%Y")
                         if(not date_formated in str(trTag)):
-                            print("Not avui")
-                            disponibles = disponibles + str(trTag).count("btn available hour-block")
-                            ocupades = ocupades + str(trTag).count("btn reserved disabled hour-disabled")
-                    
+                            escapeRoom.availableTimes = escapeRoom.availableTimes + str(trTag).count("btn available hour-block")
+                            escapeRoom.unavailableTimes = escapeRoom.unavailableTimes + str(trTag).count("btn reserved disabled hour-disabled")
+                
+                
                 for child2 in divTag.parent.find_all("span"):
                     divItemprop = child2.get("itemprop")
                     divClass = child2.get("class")
                     if ((divItemprop is not None and divItemprop == "genre") and (divClass is not None and len(divClass) >=2 and divClass[0] == "d-flex" and divClass[1] == "tag-name")):
                         for child3 in child2.descendants:
-                            genre.append(str(child3).strip())
+                            escapeRoom.addGenre(str(child3).strip())
                             
                     if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-1"):
                         for child3 in child2.descendants:
-                            subtype.append(str(child3).strip())
+                            escapeRoom.addSubtype(str(child3).strip())
                             
                     if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-2"):
                         for child3 in child2.descendants:
-                            public.append(str(child3).strip())
+                            escapeRoom.addPublic(str(child3).strip())
                             
                 if(divId is not None and divId == "mobile-empresa"):
                     for child2 in divTag.parent.find_all("li"):
@@ -260,56 +374,40 @@ for link in soup.find_all('loc'):
                             
                             if (pClass is None):
 
-                                companyInformation.append(child3.text)
-                                
-                                companyAddress = unique(companyInformation[0:2])
-                                companyPhone = unique(companyInformation[-1:])
+                                companyInfo.append(child3.text)
+                                escapeRoom.companyAddress = unique(companyInfo[0:2])
+                                escapeRoom.companyPhone = unique(companyInfo[-1:])
                                 
                         for child3 in child2.parent.find_all("a"):
                             
-                            companyInformation2.append(child3.text)
+                            companyInfo2.append(child3.text)
                                                       
-                            if (len(companyInformation2) >3 ): 
+                            if (len(companyInfo2) >3 ): 
                                                         
-                                companyEmail = unique(companyInformation2[0:1])
-                                companyWeb = unique(companyInformation2[-1:])
+                                escapeRoom.companyEmail = unique(companyInfo2[0:1])
+                                escapeRoom.companyWeb = unique(companyInfo2[-1:])
                             
                             else:
-                                companyEmail = unique(companyInformation2[0:2])
-                                companyWeb = "-"
+                                escapeRoom.companyEmail = unique(companyInfo2[0:2])
+                                escapeRoom.companyWeb = "-"
             
-                 
-            print("ESCAPE NAME............"+escapeName)
-            print("ROOM STATE............."+str(state))
-            print("VALORACIO.............."+punctuation)
-            print("TERROR................."+horror)
-            print("COMPANY NAME..........."+companyName)
-            print("COMPANY ADDRESS........"+str(" ".join(companyAddress)))
-            print("COMPANY PHONE.........."+str(" ".join(companyPhone)))
-            print("COMPANY EMAIL.........."+str(" ".join(companyEmail)))
-            print("COMPANY WEB............"+str(" ".join(companyWeb)))
-            print("LOCATION ZONE.........."+locationZone)
-            print("NUMBER OF PLAYERS......"+numberPlayers)
-            print("ESTIMATED TIME........."+timeRequired)
-            print("PRICE RANGE............"+aggregateOffer)
-            print("DIFFICULTY............."+difficultyLevel)
-            print("YEARS.................."+peopleAudience)
-            print("TAG...................."+category)
-            print("ADDRESS................"+address)
-            print("GENRE.................."+str(", ".join(unique(genre))))
-            print("SUBTYPE................"+str(", ".join(unique(subtype))))
-            print("PUBLIC................."+str(", ".join(unique(public))))
-            print("Embarassades..........."+embarassades)
-            print("Disponible anglès......"+angles)
-            print("Adaptat div funcional.."+diversitatFuncional)
-            print("Apte claustrofòbics...."+claustrofobia)
-            print("Comentaris General....."+str(comentsPts[0]))
-            print("Comentaris Ambient....."+str(comentsPts[1]))
-            print("Comentaris Enigmas....."+str(comentsPts[2]))
-            print("Comentaris Inmersi....."+str(comentsPts[3]))
-            print("Comentaris Terror......"+str(comentsPts[4]))
-            print("Hores disponibles......"+str(disponibles))
-            print("Hores ocupades........."+str(ocupades))
-            print("Hores totals..........."+str(disponibles+ocupades))
-            print("Percentatge Ocupades..."+str(round((ocupades/(disponibles+ocupades))*100,2))+" %")
-            print("-----------------------------")
+            # Mostra el progres a la consola
+            print(" <i> "+escapeRoom.name+" data has been retrieved <i>")
+            escapeRoomList.addEscape(escapeRoom)
+            
+
+# Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
+escapeRoomList.printAll()
+
+# Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
+
+
+# Tenim les dades guardades en una estructura sencilla.
+#  - Hauriem de plantejar en quin format volem formatar el CSV de sortida
+#  - Convertir la estructura a format CSV
+#  - Gravar el fitxer CSV final
+
+
+# Millores que podriem fer
+#   - Descargar imatges de la pagina web
+#   - Mirar la disponibilitat de més dies, no unicament els 6 dies següents
