@@ -260,7 +260,7 @@ soup = BeautifulSoup(r.content)
 escapeRoomList = EscapeRoomList()
 
 # Indicates the number of Escapes Rooms that are going to be collected. -1 to set to All
-nEscapes = 50
+nEscapes = 10
 
 if( nEscapes > 0 ):
     print("WARNING")
@@ -300,159 +300,160 @@ for link in soup.find_all('loc'):
                     else:
                         escapeRoom.state = "Oberta"
 
-            # Look for Escape Name and the zone where is located which are inside an "a" tag
-            companyTag = roomSoup.find_all('a')
-            for child2 in companyTag:
-                v = child2.get("class")
-                if v is not None:
-                    for c in v:
-                        if c == "company-name":
+                # Look for Escape Name and the zone where is located which are inside an "a" tag
+                companyTag = roomSoup.find_all('a')
+                for child2 in companyTag:
+                    v = child2.get("class")
+                    if v is not None:
+                        for c in v:
+                            if c == "company-name":
+                                for child3 in child2.descendants:
+                                    escapeRoom.companyName = child3
+                            if c == "location-link":
+                                for child3 in child2.descendants:
+                                    escapeRoom.locZone = child3
+                
+                # Search for the punctuation and horror
+                spanTags = roomSoup.find_all('span')
+                for spanTag in spanTags:
+                    spanTagTitle = spanTag.get("title")
+                    if spanTagTitle == "Puntuación de usuarios Escape Radar":
+                        for child3 in spanTag.descendants:
+                            escapeRoom.punctuation = child3.replace(',','.')
+                    if spanTagTitle == "Puntuación terror":
+                        for child3 in spanTag.descendants:
+                            escapeRoom.horror = child3
+                
+                iTags = roomSoup.find_all('i')
+                for iTag in iTags:
+                    if (escapeRoom.nPlayers == " "):   escapeRoom.nPlayers   = buscarElement(iTag,"numberOfPlayers"," ","span")
+                    if (escapeRoom.timelapse == " "):  escapeRoom.timelapse  = buscarElement(iTag,"timeRequired"," ","span")
+                    if (escapeRoom.lowPrice == -1): escapeRoom.setPrice(buscarElement(iTag,"fa-euro-sign"," ","span"))
+                    if (escapeRoom.difLevel == " "):   escapeRoom.difLevel   = buscarElement(iTag,"fa-brain"," ","span")
+                    if (escapeRoom.audience == " "):   escapeRoom.audience   = buscarElement(iTag,"icon-people-white"," ","span")  
+                    if (escapeRoom.category == " "):   escapeRoom.category   = buscarElement(iTag,"fa-tag"," ","span")
+                    if (escapeRoom.address == " "):    escapeRoom.address    = buscarElement(iTag,"fa-map-marker-alt"," ","a")
+                    
+                    escapeRoom.pregnant = buscarRestriccions (iTag,"SI","NO",escapeRoom.pregnant,"fa-female")
+                    escapeRoom.english = buscarRestriccions (iTag,"NO","SI",escapeRoom.english,"fa-globe")
+                    escapeRoom.funcDiversity = buscarRestriccions (iTag,"NO","SI",escapeRoom.funcDiversity,"fa-wheelchair")
+                    escapeRoom.claustrofobia = buscarRestriccions (iTag,"SI","NO",escapeRoom.claustrofobia,"fa-exclamation-circle")
+                               
+                # Search for the coments punctuations
+                divTags = roomSoup.find_all('div')
+                for divTag in divTags:
+                    divClass = divTag.get("class")
+                    divId = divTag.get("id")
+                    if(divClass is not None and len(divClass) >=2 and divClass[0] == "row" and divClass[1] == "box-puntuacio"):
+                        pos = 0
+                        for p in divTag.find_all('p'):
+                            if(p.get("class") is not None and len(p.get("class")) >= 1 and p.get("class")[0] == "txt_puntuacion"):
+                                for child3 in p.descendants:
+                                    try:
+                                        if(pos < 5):
+                                            if(not "." in str(child3)):
+                                                escapeRoom.comentsPts[pos] = float(str(child3))
+                                                pos = pos + 1
+                                            if("." in str(child3)):
+                                                escapeRoom.comentsPts[pos-1] = escapeRoom.comentsPts[pos-1] + float(str(child3))
+                                    except ValueError:
+                                        pass
+                    
+                    # Search for available and unavailable time slots
+                    
+                    if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
+                        escapeRoom.availableTimes = 0
+                        escapeRoom.unavailableTimes = 0
+                        trTags = divTag.find_all('tr')
+                        for trTag in trTags:
+                            date_formated = datetime.datetime.now().strftime("%d/%m/%Y")
+                            if(not date_formated in str(trTag)):
+                                escapeRoom.availableTimes = escapeRoom.availableTimes + str(trTag).count("btn available hour-block")
+                                escapeRoom.unavailableTimes = escapeRoom.unavailableTimes + str(trTag).count("btn reserved disabled hour-disabled")
+                    
+                    
+                    for child2 in divTag.parent.find_all("span"):
+                        divItemprop = child2.get("itemprop")
+                        divClass = child2.get("class")
+                        if ((divItemprop is not None and divItemprop == "genre") and (divClass is not None and len(divClass) >=2 and divClass[0] == "d-flex" and divClass[1] == "tag-name")):
                             for child3 in child2.descendants:
-                                escapeRoom.companyName = child3
-                        if c == "location-link":
-                            for child3 in child2.descendants:
-                                escapeRoom.locZone = child3
-            
-            # Search for the punctuation and horror
-            spanTags = roomSoup.find_all('span')
-            for spanTag in spanTags:
-                spanTagTitle = spanTag.get("title")
-                if spanTagTitle == "Puntuación de usuarios Escape Radar":
-                    for child3 in spanTag.descendants:
-                        escapeRoom.punctuation = child3.replace(',','.')
-                if spanTagTitle == "Puntuación terror":
-                    for child3 in spanTag.descendants:
-                        escapeRoom.horror = child3
-            
-            iTags = roomSoup.find_all('i')
-            for iTag in iTags:
-                if (escapeRoom.nPlayers == " "):   escapeRoom.nPlayers   = buscarElement(iTag,"numberOfPlayers"," ","span")
-                if (escapeRoom.timelapse == " "):  escapeRoom.timelapse  = buscarElement(iTag,"timeRequired"," ","span")
-                if (escapeRoom.lowPrice == -1): escapeRoom.setPrice(buscarElement(iTag,"fa-euro-sign"," ","span"))
-                if (escapeRoom.difLevel == " "):   escapeRoom.difLevel   = buscarElement(iTag,"fa-brain"," ","span")
-                if (escapeRoom.audience == " "):   escapeRoom.audience   = buscarElement(iTag,"icon-people-white"," ","span")  
-                if (escapeRoom.category == " "):   escapeRoom.category   = buscarElement(iTag,"fa-tag"," ","span")
-                if (escapeRoom.address == " "):    escapeRoom.address    = buscarElement(iTag,"fa-map-marker-alt"," ","a")
-                
-                escapeRoom.pregnant = buscarRestriccions (iTag,"SI","NO",escapeRoom.pregnant,"fa-female")
-                escapeRoom.english = buscarRestriccions (iTag,"NO","SI",escapeRoom.english,"fa-globe")
-                escapeRoom.funcDiversity = buscarRestriccions (iTag,"NO","SI",escapeRoom.funcDiversity,"fa-wheelchair")
-                escapeRoom.claustrofobia = buscarRestriccions (iTag,"SI","NO",escapeRoom.claustrofobia,"fa-exclamation-circle")
-                           
-            # Search for the coments punctuations
-            divTags = roomSoup.find_all('div')
-            for divTag in divTags:
-                divClass = divTag.get("class")
-                divId = divTag.get("id")
-                if(divClass is not None and len(divClass) >=2 and divClass[0] == "row" and divClass[1] == "box-puntuacio"):
-                    pos = 0
-                    for p in divTag.find_all('p'):
-                        if(p.get("class") is not None and len(p.get("class")) >= 1 and p.get("class")[0] == "txt_puntuacion"):
-                            for child3 in p.descendants:
-                                try:
-                                    if(pos < 5):
-                                        if(not "." in str(child3)):
-                                            escapeRoom.comentsPts[pos] = float(str(child3))
-                                            pos = pos + 1
-                                        if("." in str(child3)):
-                                            escapeRoom.comentsPts[pos-1] = escapeRoom.comentsPts[pos-1] + float(str(child3))
-                                except ValueError:
-                                    pass
-                
-                # Search for available and unavailable time slots
-                
-                if(divClass is not None and divClass[0] == "table-responsive" and divId is not None and divId == "week"):
-                    escapeRoom.availableTimes = 0
-                    escapeRoom.unavailableTimes = 0
-                    trTags = divTag.find_all('tr')
-                    for trTag in trTags:
-                        date_formated = datetime.datetime.now().strftime("%d/%m/%Y")
-                        if(not date_formated in str(trTag)):
-                            escapeRoom.availableTimes = escapeRoom.availableTimes + str(trTag).count("btn available hour-block")
-                            escapeRoom.unavailableTimes = escapeRoom.unavailableTimes + str(trTag).count("btn reserved disabled hour-disabled")
-                
-                
-                for child2 in divTag.parent.find_all("span"):
-                    divItemprop = child2.get("itemprop")
-                    divClass = child2.get("class")
-                    if ((divItemprop is not None and divItemprop == "genre") and (divClass is not None and len(divClass) >=2 and divClass[0] == "d-flex" and divClass[1] == "tag-name")):
-                        for child3 in child2.descendants:
-                            escapeRoom.addGenre(str(child3).strip())
-                            
-                    if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-1"):
-                        for child3 in child2.descendants:
-                            escapeRoom.addSubtype(str(child3).strip())
-                            
-                    if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-2"):
-                        for child3 in child2.descendants:
-                            escapeRoom.addPublic(str(child3).strip())
-                            
-                if(divId is not None and divId == "mobile-empresa"):
-                    for child2 in divTag.parent.find_all("li"):
-                        for child3 in child2.parent.find_all("p"):
-                            pClass = child3.get("class")
-                            pText = child3.get("text")
-                            
-                            if (pClass is None):
-
-                                companyInfo.append(child3.text)
-                                escapeRoom.companyAddress = unique(companyInfo[0:2])
-                                escapeRoom.companyPhone = unique(companyInfo[-1:])
+                                escapeRoom.addGenre(str(child3).strip())
                                 
-                        for child3 in child2.parent.find_all("a"):
-                            
-                            companyInfo2.append(child3.text)
-                                                      
-                            if (len(companyInfo2) >3 ): 
-                                                        
-                                escapeRoom.companyEmail = unique(companyInfo2[0:1])
-                                escapeRoom.companyWeb = unique(companyInfo2[-1:])
-                            
-                            else:
-                                escapeRoom.companyEmail = unique(companyInfo2[0:2])
-                                escapeRoom.companyWeb = "-"
-            
-            # Mostra el progres a la consola
-            print(" <i> "+escapeRoom.name+" data has been retrieved <i>")
-            escapeRoomList.addEscape(escapeRoom)
-            
+                        if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-1"):
+                            for child3 in child2.descendants:
+                                escapeRoom.addSubtype(str(child3).strip())
+                                
+                        if (divClass is not None and len(divClass) >=3 and divClass[0] == "d-flex" and divClass[1] == "tag-name" and divClass[2] == "tag-type-2"):
+                            for child3 in child2.descendants:
+                                escapeRoom.addPublic(str(child3).strip())
+                                
+                    if(divId is not None and divId == "mobile-empresa"):
+                        for child2 in divTag.parent.find_all("li"):
+                            for child3 in child2.parent.find_all("p"):
+                                pClass = child3.get("class")
+                                pText = child3.get("text")
+                                
+                                if (pClass is None):
 
-
-            escapeRoomDf['id'] = escapeRoom.id
-            escapeRoomDf['name'] = escapeRoom.name
-            escapeRoomDf['punctuation'] = escapeRoom.punctuation
-            escapeRoomDf['companyName'] = escapeRoom.companyName
-            escapeRoomDf['locZone'] = escapeRoom.locZone
-            escapeRoomDf['nPlayers'] = escapeRoom.nPlayers
-            escapeRoomDf['timelapse'] = escapeRoom.timelapse
-            escapeRoomDf['lowPrice'] = escapeRoom.lowPrice
-            escapeRoomDf['highPrice'] = escapeRoom.highPrice
-            escapeRoomDf['difLevel'] = escapeRoom.difLevel
-            escapeRoomDf['audience'] = escapeRoom.audience
-            escapeRoomDf['category'] = escapeRoom.category
-            escapeRoomDf['horror'] = escapeRoom.horror
-            escapeRoomDf['address'] = escapeRoom.address
-            escapeRoomDf['genre'] = pd.Series(escapeRoom.getGenre())
-            escapeRoomDf['subtype'] = pd.Series(escapeRoom.getSubType())
-            escapeRoomDf['public'] = pd.Series(escapeRoom.getPublic())
-            escapeRoomDf['pregnant'] = escapeRoom.pregnant
-            escapeRoomDf['english'] = escapeRoom.english
-            escapeRoomDf['funcDiversity'] = escapeRoom.funcDiversity
-            escapeRoomDf['claustrofobia'] = escapeRoom.claustrofobia
-            escapeRoomDf['ptsComenGen'] = escapeRoom.comentsPts[0]
-            escapeRoomDf['ptsComenAmbi'] = escapeRoom.comentsPts[1]
-            escapeRoomDf['ptsComenEnig'] = escapeRoom.comentsPts[2]
-            escapeRoomDf['ptsComenInm'] = escapeRoom.comentsPts[3]
-            escapeRoomDf['ptsComenHorror'] = escapeRoom.comentsPts[4]
-            escapeRoomDf['availableTimes'] = escapeRoom.availableTimes
-            escapeRoomDf['unavailableTimes'] = escapeRoom.unavailableTimes
-            escapeRoomDf['companyAddress'] = escapeRoom.companyAddress
-            escapeRoomDf['companyPhone'] = pd.Series(escapeRoom.companyPhone)
-            escapeRoomDf['companyEmail'] = pd.Series(escapeRoom.companyEmail)
-            escapeRoomDf['companyWeb'] = pd.Series(escapeRoom.companyWeb)
-            escapeRoomDf['state'] = pd.Series(escapeRoom.state)
-
-
+                                    companyInfo.append(child3.text)
+                                    escapeRoom.companyAddress = unique(companyInfo[0:2])
+                                    escapeRoom.companyPhone = unique(companyInfo[-1:])
+                                    
+                            for child3 in child2.parent.find_all("a"):
+                                
+                                companyInfo2.append(child3.text)
+                                                          
+                                if (len(companyInfo2) >3 ): 
+                                                            
+                                    escapeRoom.companyEmail = unique(companyInfo2[0:1])
+                                    escapeRoom.companyWeb = unique(companyInfo2[-1:])
+                                
+                                else:
+                                    escapeRoom.companyEmail = unique(companyInfo2[0:2])
+                                    escapeRoom.companyWeb = "-"
+                
+                # Mostra el progres a la consola
+                print(" <i> "+escapeRoom.name+" data has been retrieved <i>")
+                escapeRoomList.addEscape(escapeRoom)
+                
+                escapeRoomDf2 = {'id':escapeRoom.id,
+                                    'name':escapeRoom.name,
+                                    'punctuation':escapeRoom.punctuation,
+                                    'companyName':escapeRoom.companyName,
+                                    'locZone':escapeRoom.locZone,
+                                    'nPlayers':escapeRoom.nPlayers,
+                                    'timelapse':escapeRoom.timelapse,
+                                    'lowPrice':escapeRoom.lowPrice,
+                                    'highPrice':escapeRoom.highPrice,
+                                    'difLevel':escapeRoom.difLevel,
+                                    'audience':escapeRoom.audience,
+                                    'category':escapeRoom.category,
+                                    'horror':escapeRoom.horror,
+                                    'address':escapeRoom.address,
+                                    'genre':pd.Series(escapeRoom.getGenre(),dtype=pd.StringDtype()),
+                                    'subtype':pd.Series(escapeRoom.getSubType(),dtype=pd.StringDtype()),
+                                    'public':pd.Series(escapeRoom.getPublic(),dtype=pd.StringDtype()),
+                                    'pregnant':escapeRoom.pregnant,
+                                    'english':escapeRoom.english,
+                                    'funcDiversity':escapeRoom.funcDiversity,
+                                    'claustrofobia':escapeRoom.claustrofobia,
+                                    'ptsComenGen':escapeRoom.comentsPts[0],
+                                    'ptsComenAmbi':escapeRoom.comentsPts[1],
+                                    'ptsComenEnig':escapeRoom.comentsPts[2],
+                                    'ptsComenInm':escapeRoom.comentsPts[3],
+                                    'ptsComenHorror':escapeRoom.comentsPts[4],
+                                    'availableTimes':escapeRoom.availableTimes,
+                                    'unavailableTimes':escapeRoom.unavailableTimes,
+                                    'companyAddress':pd.Series(escapeRoom.companyAddress,dtype=pd.StringDtype()),
+                                    'companyPhone':pd.Series(escapeRoom.companyPhone,dtype=pd.StringDtype()),
+                                    'companyEmail':pd.Series(escapeRoom.companyEmail, dtype=pd.StringDtype()),
+                                    'companyWeb':pd.Series(escapeRoom.companyWeb,dtype=pd.StringDtype()),
+                                    'state':pd.Series(escapeRoom.state,dtype=pd.StringDtype())}
+                
+                #escapeRoomDf = escapeRoomDf.append(escapeRoomDf2,ignore_index = True)
+                
+                escapeRoomDf = pd.concat([escapeRoomDf, pd.DataFrame.from_records([escapeRoomDf2])])
+                
 # Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
 # escapeRoomList.printAll()
 
@@ -469,4 +470,4 @@ for link in soup.find_all('loc'):
 #   - Descargar imatges de la pagina web
 #   - Mirar la disponibilitat de més dies, no unicament els 6 dies següents
 
-escapeRoomDf.head()
+escapeRoomDf
