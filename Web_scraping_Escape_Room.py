@@ -430,9 +430,9 @@ for link in soup.find_all('loc'):
                                     'category':escapeRoom.category,
                                     'horror':escapeRoom.horror,
                                     'address':escapeRoom.address,
-                                    'genre':pd.Series(escapeRoom.getGenre(),dtype=pd.StringDtype()),
-                                    'subtype':pd.Series(escapeRoom.getSubType(),dtype=pd.StringDtype()),
-                                    'public':pd.Series(escapeRoom.getPublic(),dtype=pd.StringDtype()),
+                                    'genre':str(escapeRoom.getGenre()),
+                                    'subtype':str(escapeRoom.getSubType()),
+                                    'public':str(escapeRoom.getPublic()),
                                     'pregnant':escapeRoom.pregnant,
                                     'english':escapeRoom.english,
                                     'funcDiversity':escapeRoom.funcDiversity,
@@ -444,30 +444,40 @@ for link in soup.find_all('loc'):
                                     'ptsComenHorror':escapeRoom.comentsPts[4],
                                     'availableTimes':escapeRoom.availableTimes,
                                     'unavailableTimes':escapeRoom.unavailableTimes,
-                                    'companyAddress':pd.Series(escapeRoom.companyAddress,dtype=pd.StringDtype()),
-                                    'companyPhone':pd.Series(escapeRoom.companyPhone,dtype=pd.StringDtype()),
-                                    'companyEmail':pd.Series(escapeRoom.companyEmail, dtype=pd.StringDtype()),
-                                    'companyWeb':pd.Series(escapeRoom.companyWeb,dtype=pd.StringDtype()),
-                                    'state':pd.Series(escapeRoom.state,dtype=pd.StringDtype())}
+                                    'companyAddress':pd.Series(escapeRoom.companyAddress),
+                                    'companyPhone':str(escapeRoom.companyPhone),
+                                    'companyEmail':str(escapeRoom.companyEmail),
+                                    'companyWeb':str(escapeRoom.companyWeb),
+                                    'state':str(escapeRoom.state)}
                 
                 #escapeRoomDf = escapeRoomDf.append(escapeRoomDf2,ignore_index = True)
                 
-                escapeRoomDf = pd.concat([escapeRoomDf, pd.DataFrame.from_records([escapeRoomDf2])])
+                escapeRoomDf = pd.concat([escapeRoomDf, pd.DataFrame.from_records([escapeRoomDf2])], ignore_index=True)
                 
 # Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
 # escapeRoomList.printAll()
 
 # Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
 
+escapeRoomDf
 
-# Tenim les dades guardades en una estructura sencilla.
-#  - Hauriem de plantejar en quin format volem formatar el CSV de sortida
-#  - Convertir la estructura a format CSV
-#  - Gravar el fitxer CSV final
+print("CSV Export Started")
+escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';')
+print("CSV Export Finished")
 
 
+# Coses pendents:
+# J- Divir nPlayers en 2 camps de min i max
+# X- Que el separador dels valors numerics sigui un punt per tots (arreglar camp horror)
+# X- Intentar treure claudators (subtipus, i company CAMPS)
+# J- Dividir els generes en  8 columnes
+# J- Dividir el public en columnes
+# X- Exportar en UTF-8
+#
+#
+#
+#
+#
 # Millores que podriem fer
 #   - Descargar imatges de la pagina web
 #   - Mirar la disponibilitat de més dies, no unicament els 6 dies següents
-
-escapeRoomDf
