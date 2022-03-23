@@ -10,6 +10,7 @@
 # *   Xenia Casanovas Díez                                                *
 # *************************************************************************                                                                      
 
+import pandas as pd
 import re
 import sys
 import time
@@ -18,6 +19,9 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 from dateutil.relativedelta import relativedelta
+
+escapeRoomDf = pd.DataFrame(columns=['id','name','punctuation','companyName','locZone','nPlayers','timelapse','lowPrice','highPrice','difLevel','audience','category','horror','address','genre','subtype','public','pregnant','english','funcDiversity','claustrofobia','ptsComenGen','ptsComenAmbi','ptsComenEnig','ptsComenInm','ptsComenHorror','availableTimes','unavailableTimes','companyAddress','companyPhone','companyEmail','companyWeb','state'])
+
 
 # Funció que s'encarrega de fer la crida a les URLs.
 #  Realitza reintents separats per 5 segons que van incrementant de 5 en 5.
@@ -60,9 +64,9 @@ def unique(list1):
 # Funció per analitzar i buscar possibles restriccions d'una escape room que s'emmagatzemen similar al html
 def buscarRestriccions (iTag,defaultValue,locatedValue,actualValue,code):
     if (actualValue == defaultValue):
-       iclass = iTag.get("class")
-       if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == code):
-           return  locatedValue
+        iclass = iTag.get("class")
+        if (iclass is not None and len(iclass) >=3 and iclass[0] == "mr-1" and iclass[1] == "fas" and iclass[2] == code):
+            return  locatedValue
     return defaultValue
     
 # Classe que emmagatzema les dades d'una sala d'Escape Room
@@ -85,7 +89,6 @@ class EscapeRoom:
         self.genre = [ ]
         self.subtype = [ ]
         self.public = [ ]
-        self.language = [ ]
         self.pregnant = "SI"
         self.english = "NO"
         self.funcDiversity = "NO"
@@ -108,8 +111,8 @@ class EscapeRoom:
             self.highPrice = float(p[1].strip())
         else:
             try:
-              self.lowPrice = float(price.strip())
-              self.highprice = float(price.strip())
+                self.lowPrice = float(price.strip())
+                self.highprice = float(price.strip())
             except:
                 pass
 
@@ -117,16 +120,34 @@ class EscapeRoom:
         if(toadd is not None): 
             self.public.append(toadd)
             self.public = unique(self.public)
+            
+    def getPublic(self):
+        if(len(self.public) == 0):
+            return None
+        else:
+            return self.public
     
     def addGenre(self,toadd):
         if(toadd is not None): 
             self.genre.append(toadd)
             self.genre = unique(self.genre)
+    
+    def getGenre(self):
+        if(len(self.genre) == 0):
+            return None
+        else:
+            return self.genre
 
     def addSubtype(self,toadd):
         if(toadd is not None): 
             self.subtype.append(toadd)
             self.subtype = unique(self.subtype)
+    
+    def getSubType(self):
+        if(len(self.subtype) == 0):
+            return None
+        else:
+            return self.subtype
     
     def getPercAvailable(self):
         return round((self.availableTimes / (self.availableTimes + self.unavailableTimes))*100,2)
@@ -156,7 +177,7 @@ class EscapeRoom:
         print("  Rang de preu..........."+str(self.lowPrice)+"€ - "+str(self.highPrice)+"€")
         print("  Dificultat............."+self.difLevel)
         print("  Edats.................."+self.audience)
-        print("  Públic objectiu........"+str(", ".join(self.public)))
+        print("  Públic objectiu........"+str(self.public))
         print("  Genere................."+str(", ".join(self.genre)))
         print("  Subtipus..............."+str(", ".join(self.subtype)))
         print("  Categories............."+self.category)
@@ -189,7 +210,7 @@ class EscapeRoom:
         print("    Pàgina web..........."+str(" ".join(self.companyWeb)))
         print(" ")
         print(" ")
-  
+
 # Estructura amb que emmagatzema totes les sales de Escape Room
 class EscapeRoomList:
     def __init__(self):
@@ -396,8 +417,44 @@ for link in soup.find_all('loc'):
             escapeRoomList.addEscape(escapeRoom)
             
 
+
+            escapeRoomDf['id'] = escapeRoom.id
+            escapeRoomDf['name'] = escapeRoom.name
+            escapeRoomDf['punctuation'] = escapeRoom.punctuation
+            escapeRoomDf['companyName'] = escapeRoom.companyName
+            escapeRoomDf['locZone'] = escapeRoom.locZone
+            escapeRoomDf['nPlayers'] = escapeRoom.nPlayers
+            escapeRoomDf['timelapse'] = escapeRoom.timelapse
+            escapeRoomDf['lowPrice'] = escapeRoom.lowPrice
+            escapeRoomDf['highPrice'] = escapeRoom.highPrice
+            escapeRoomDf['difLevel'] = escapeRoom.difLevel
+            escapeRoomDf['audience'] = escapeRoom.audience
+            escapeRoomDf['category'] = escapeRoom.category
+            escapeRoomDf['horror'] = escapeRoom.horror
+            escapeRoomDf['address'] = escapeRoom.address
+            escapeRoomDf['genre'] = pd.Series(escapeRoom.getGenre())
+            escapeRoomDf['subtype'] = pd.Series(escapeRoom.getSubType())
+            escapeRoomDf['public'] = pd.Series(escapeRoom.getPublic())
+            escapeRoomDf['pregnant'] = escapeRoom.pregnant
+            escapeRoomDf['english'] = escapeRoom.english
+            escapeRoomDf['funcDiversity'] = escapeRoom.funcDiversity
+            escapeRoomDf['claustrofobia'] = escapeRoom.claustrofobia
+            escapeRoomDf['ptsComenGen'] = escapeRoom.comentsPts[0]
+            escapeRoomDf['ptsComenAmbi'] = escapeRoom.comentsPts[1]
+            escapeRoomDf['ptsComenEnig'] = escapeRoom.comentsPts[2]
+            escapeRoomDf['ptsComenInm'] = escapeRoom.comentsPts[3]
+            escapeRoomDf['ptsComenHorror'] = escapeRoom.comentsPts[4]
+            escapeRoomDf['availableTimes'] = escapeRoom.availableTimes
+            escapeRoomDf['unavailableTimes'] = escapeRoom.unavailableTimes
+            escapeRoomDf['companyAddress'] = escapeRoom.companyAddress
+            escapeRoomDf['companyPhone'] = pd.Series(escapeRoom.companyPhone)
+            escapeRoomDf['companyEmail'] = pd.Series(escapeRoom.companyEmail)
+            escapeRoomDf['companyWeb'] = pd.Series(escapeRoom.companyWeb)
+            escapeRoomDf['state'] = pd.Series(escapeRoom.state)
+
+
 # Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
-escapeRoomList.printAll()
+# escapeRoomList.printAll()
 
 # Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
 
@@ -411,3 +468,5 @@ escapeRoomList.printAll()
 # Millores que podriem fer
 #   - Descargar imatges de la pagina web
 #   - Mirar la disponibilitat de més dies, no unicament els 6 dies següents
+
+escapeRoomDf.head()
