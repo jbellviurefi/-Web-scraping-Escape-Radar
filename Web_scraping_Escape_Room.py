@@ -10,6 +10,7 @@
 # *   Xenia Casanovas Díez                                                *
 # *************************************************************************                                                                      
 
+import unicodedata
 import pandas as pd
 import re
 import sys
@@ -20,7 +21,13 @@ from bs4 import BeautifulSoup
 import datetime
 from dateutil.relativedelta import relativedelta
 
-escapeRoomDf = pd.DataFrame(columns=['id','name','punctuation','companyName','locZone','nPlayers','timelapse','lowPrice','highPrice','difLevel','audience','category','horror','address','genre','subtype','public','pregnant','english','funcDiversity','claustrofobia','ptsComenGen','ptsComenAmbi','ptsComenEnig','ptsComenInm','ptsComenHorror','availableTimes','unavailableTimes','companyAddress','companyPhone','companyEmail','companyWeb','state'])
+escapeRoomDf = pd.DataFrame(columns=['id','name','punctuation','companyName','locZone','nPlayers','timelapse',
+'lowPrice','highPrice','difLevel','audience','category','horror','address','action','adventure','cifi','childish',
+'investigation','scary','mistery','subtype','eOnline','eExterior','jPortatil','VR','eHall',
+'public','salavs','empresas','grups','family','kids',
+'pregnant','english','funcDiversity','claustrofobia',
+'ptsComenGen','ptsComenAmbi','ptsComenEnig','ptsComenInm','ptsComenHorror','availableTimes','unavailableTimes',
+'companyAddress','companyPhone','companyEmail','companyWeb','state'])
 
 
 # Funció que s'encarrega de fer la crida a les URLs.
@@ -78,6 +85,8 @@ class EscapeRoom:
         self.companyName = " "
         self.locZone = " "
         self.nPlayers = " "
+        self.minPlayers = -1
+        self.maxPlayers = -1
         self.timelapse = " "
         self.lowPrice = -1
         self.highPrice = -1
@@ -113,6 +122,20 @@ class EscapeRoom:
             try:
                 self.lowPrice = float(price.strip())
                 self.highprice = float(price.strip())
+            except:
+                pass
+    
+    def setNplayers(self, nPlayers):
+        nPlayers = nPlayers.replace('.','')
+        nPlayers = nPlayers.replace(',','.')
+        if ('-' in nPlayers):
+            p = nPlayers.split('-')
+            self.minPlayers  = int(p[0].strip())
+            self.maxPlayers = int(p[1].strip())
+        else:
+            try:
+                self.minPlayers = int(nPlayers.strip())
+                self.maxPlayers = int(nPlayers.strip())
             except:
                 pass
 
@@ -151,6 +174,24 @@ class EscapeRoom:
     
     def getPercAvailable(self):
         return round((self.availableTimes / (self.availableTimes + self.unavailableTimes))*100,2)
+    
+    def hasGenere(self, genere):
+        if genere in str(", ".join(self.genre)):
+            return 'S'
+        else:
+            return 'N'
+    
+    def hasSubtype(self, genere):
+        if genere in str(", ".join(self.subtype)):
+            return 'S'
+        else:
+            return 'N'
+            
+    def hasPublic(self, public):
+        if public in str(", ".join(self.public)):
+            return 'S'
+        else:
+            return 'N'
     
     def generateCSV(self):
         csv = str(self.id)
@@ -259,8 +300,9 @@ r = requestWebPage(url_sitemap, headers)
 soup = BeautifulSoup(r.content)
 escapeRoomList = EscapeRoomList()
 
-# Indicates the number of Escapes Rooms that are going to be collected. -1 to set to All
-nEscapes = 10
+# Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
+nEscapes = 72
+ids = 0
 
 if( nEscapes > 0 ):
     print("WARNING")
@@ -269,28 +311,24 @@ if( nEscapes > 0 ):
     
 for link in soup.find_all('loc'):
     for roomUrl in link.children:   
-        if "escaperadar.com/escape-room/" in roomUrl and nEscapes >= 0:
+        if "escaperadar.com/escape-room/" in roomUrl and nEscapes > 0:
         #if "www.escaperadar.com/escape-room/granollers-experience/bandidos" in roomUrl and h < 19:
             
             escapeRoom = EscapeRoom()
             companyInfo = [ ]
             companyInfo2 = [ ]
-            
             room = requestWebPage(roomUrl, headers)
-            
-            nEscapes = nEscapes - 1
-            
             roomSoup = BeautifulSoup(room.content)
             titleTag = roomSoup.find('h1')
-
-            escapeRoom.id = escapeRoomList.getNextId()
 
             # Hi he afegit aquesta condició perquè he vist que és el que feia que fallés a vegades. Retorna algunes pàgines que
             # llegeix com una sala però queno tenen nom definit ni info. D'aquesta manera retorna únicament els que tenen valor a h1.
             if(titleTag is not None):
+                escapeRoom.id = ids
+                ids = ids + 1
+                nEscapes = nEscapes - 1
                 for child2 in titleTag.descendants:
                     escapeNameFull = child2
-
                     escapeRoom.name = re.sub("[\(\[].*?[\)\]]", "", escapeNameFull)
                     
                     states = re.search(r'\((.*?)\)', escapeNameFull)
@@ -326,7 +364,7 @@ for link in soup.find_all('loc'):
                 
                 iTags = roomSoup.find_all('i')
                 for iTag in iTags:
-                    if (escapeRoom.nPlayers == " "):   escapeRoom.nPlayers   = buscarElement(iTag,"numberOfPlayers"," ","span")
+                    if (escapeRoom.minPlayers == -1):   escapeRoom.setNplayers(buscarElement(iTag,"numberOfPlayers"," ","span"))
                     if (escapeRoom.timelapse == " "):  escapeRoom.timelapse  = buscarElement(iTag,"timeRequired"," ","span")
                     if (escapeRoom.lowPrice == -1): escapeRoom.setPrice(buscarElement(iTag,"fa-euro-sign"," ","span"))
                     if (escapeRoom.difLevel == " "):   escapeRoom.difLevel   = buscarElement(iTag,"fa-brain"," ","span")
@@ -413,7 +451,8 @@ for link in soup.find_all('loc'):
                                     escapeRoom.companyWeb = "-"
                 
                 # Mostra el progres a la consola
-                print(" <i> "+escapeRoom.name+" data has been retrieved <i>")
+                print(" <i> Escape num "+str(ids)+" - "+escapeRoom.name+" data has been retrieved <i>")
+                
                 escapeRoomList.addEscape(escapeRoom)
                 
                 escapeRoomDf2 = {'id':escapeRoom.id,
@@ -430,9 +469,26 @@ for link in soup.find_all('loc'):
                                     'category':escapeRoom.category,
                                     'horror':escapeRoom.horror,
                                     'address':escapeRoom.address,
+                                    'action':escapeRoom.hasGenere('Acción'),
+                                    'adventure':escapeRoom.hasGenere('Aventura'),
+                                    'cifi':escapeRoom.hasGenere('Ciencia Ficción'),
+                                    'childish':escapeRoom.hasGenere('Infantil'),
+                                    'investigation':escapeRoom.hasGenere('Investigación'),
+                                    'scary':escapeRoom.hasGenere('Miedo/Terror'),
+                                    'mistery':escapeRoom.hasGenere('Misterio'),
                                     'genre':str(escapeRoom.getGenre()),
+                                    'eOnline':escapeRoom.hasSubtype('Escape Online'),
+                                    'eHall':escapeRoom.hasSubtype('Escape Hall'),
+                                    'eExterior':escapeRoom.hasSubtype('Escape Exterior'),
+                                    'VR':escapeRoom.hasSubtype('VR Realidad Virtual'),
+                                    'jPortatil':escapeRoom.hasSubtype('Juego Portátil'),
                                     'subtype':str(escapeRoom.getSubType()),
                                     'public':str(escapeRoom.getPublic()),
+                                    'salavs':escapeRoom.hasPublic('SalaVsSala'),
+                                    'empresas':escapeRoom.hasPublic('Empresas'),
+                                    'grups':escapeRoom.hasPublic('Grupos'),
+                                    'family':escapeRoom.hasPublic('Familiar'),
+                                    'kids':escapeRoom.hasPublic('Niños'),
                                     'pregnant':escapeRoom.pregnant,
                                     'english':escapeRoom.english,
                                     'funcDiversity':escapeRoom.funcDiversity,
@@ -462,19 +518,21 @@ for link in soup.find_all('loc'):
 escapeRoomDf
 
 print("CSV Export Started")
-escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';')
+escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';', encoding="utf-8") 
 print("CSV Export Finished")
 
 
 # Coses pendents:
-# J- Divir nPlayers en 2 camps de min i max
+# J- Divir nPlayers en 2 camps de min i max (FET)
 # X- Que el separador dels valors numerics sigui un punt per tots (arreglar camp horror)
 # X- Intentar treure claudators (subtipus, i company CAMPS)
-# J- Dividir els generes en  8 columnes
-# J- Dividir el public en columnes
+# J- Dividir els generes en  8 columnes (FET)
+# J- Dividir el public en columnes (FET pero esta donant problemes la ñ de niños)
 # X- Exportar en UTF-8
 #
+# - Hauriem de mirar de eliminar coses rares sobretot al classificar entre generes, subtipus i public perque estan donant problemes
 #
+# - Si no aconseguim exportar bé també haurem d'aplicar lo mateix als altres camps
 #
 #
 #
