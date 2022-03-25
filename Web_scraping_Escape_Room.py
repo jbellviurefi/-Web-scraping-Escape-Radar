@@ -33,7 +33,7 @@ images = True
 # Indicates the path of the execution
 excPath = "C:/Users/jbell/Documents/"
 
-escapeRoomDf = pd.DataFrame(columns=['id','name','imgName','punctuation','companyName','locZone','nPlayers','timelapse',
+escapeRoomDf = pd.DataFrame(columns=['id','name','imgName','punctuation','companyName','locZone','minPlayer','maxPlayer','timelapse',
 'lowPrice','highPrice','difLevel','audience','category','horror','address','action','adventure','cifi','childish',
 'investigation','scary','mistery','eOnline','eExterior','jPortatil','VR','eHall','salavs','empresas','grups','family','kids',
 'pregnant','english','funcDiversity','claustrofobia',
@@ -466,7 +466,8 @@ for link in soup.find_all('loc'):
                                     'punctuation':escapeRoom.punctuation,
                                     'companyName':escapeRoom.companyName,
                                     'locZone':escapeRoom.locZone,
-                                    'nPlayers':escapeRoom.nPlayers,
+                                    'minPlayer':escapeRoom.minPlayer,
+                                    'maxPlayer':escapeRoom.maxPlayer,
                                     'timelapse':escapeRoom.timelapse,
                                     'lowPrice':escapeRoom.lowPrice,
                                     'highPrice':escapeRoom.highPrice,
