@@ -466,8 +466,8 @@ for link in soup.find_all('loc'):
                                     'punctuation':escapeRoom.punctuation,
                                     'companyName':escapeRoom.companyName,
                                     'locZone':escapeRoom.locZone,
-                                    'minPlayer':escapeRoom.minPlayer,
-                                    'maxPlayer':escapeRoom.maxPlayer,
+                                    'minPlayer':escapeRoom.minPlayers,
+                                    'maxPlayer':escapeRoom.maxPlayers,
                                     'timelapse':escapeRoom.timelapse,
                                     'lowPrice':escapeRoom.lowPrice,
                                     'highPrice':escapeRoom.highPrice,
@@ -533,10 +533,13 @@ for link in soup.find_all('loc'):
 
 #escapeRoomDf.head(n = 100)
 
-#print("CSV Export Started")
+print("CSV Export Started")
 escapeRoomDf.to_csv(excPath+'EscapeRadar.csv', sep =';', encoding="utf-8") 
-#print("CSV Export Finished")
+print("CSV Export Finished")
 
+print("*************************************************************************")
+print("*  Final de execució                                                    *")
+print("*************************************************************************")
 
 # Coses pendents:
 # J- Divir nPlayers en 2 camps de min i max (FET)
