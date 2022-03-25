@@ -6,7 +6,7 @@
 # *        W E B   S C R A P I N G   D E   E S C A P E   R A D A R        *
 # *                                                                       *
 # *  Autors:                                                              *
-# *   Jordi Bellciure Figueras                                            *
+# *   Jordi Bellviure Figueras                                            *
 # *   Xenia Casanovas Díez                                                *
 # *************************************************************************                                                                      
 
@@ -20,8 +20,20 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 from dateutil.relativedelta import relativedelta
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 
-escapeRoomDf = pd.DataFrame(columns=['id','name','punctuation','companyName','locZone','nPlayers','timelapse',
+# Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
+nEscapes = 10
+# Indicates if images will be extracted or no
+images = True
+# Indicates the path of the execution
+excPath = "C:/Users/jbell/Documents/"
+
+escapeRoomDf = pd.DataFrame(columns=['id','name','imgName','punctuation','companyName','locZone','nPlayers','timelapse',
 'lowPrice','highPrice','difLevel','audience','category','horror','address','action','adventure','cifi','childish',
 'investigation','scary','mistery','eOnline','eExterior','jPortatil','VR','eHall','salavs','empresas','grups','family','kids',
 'pregnant','english','funcDiversity','claustrofobia',
@@ -251,23 +263,6 @@ class EscapeRoom:
         print(" ")
         print(" ")
 
-# Estructura amb que emmagatzema totes les sales de Escape Room
-class EscapeRoomList:
-    def __init__(self):
-        self.escapeRoomList = [ ]
-        self.nEscapes = 0
-        
-    def addEscape(self,toadd):
-        self.escapeRoomList.append(toadd)
-        self.nEscapes = self.nEscapes + 1
-        
-    def printAll(self):
-        for escape in self.escapeRoomList:
-            escape.printEscapeRoom()
-    
-    def getNextId(self):
-        return self.nEscapes
-            
 
 print("*************************************************************************")
 print("*  Universitat Oberta de Catalunya                                      *")
@@ -277,10 +272,13 @@ print("*                                                                       *
 print("*        W E B   S C R A P I N G   D E   E S C A P E   R A D A R        *")
 print("*                                                                       *")
 print("*  Autors:                                                              *")
-print("*   Jordi Bellciure Figueras                                            *")
+print("*   Jordi Bellviure Figueras                                            *")
 print("*   Xenia Casanovas Díez                                                *")
 print("*************************************************************************")
 print("                                                                         ")
+
+if images:
+    driver = webdriver.Edge(excPath+"msedgedriver.exe")
 
 # URLs de partida
 url = 'https://www.escaperadar.com'
@@ -297,10 +295,7 @@ headers = {
 }
 r = requestWebPage(url_sitemap, headers)
 soup = BeautifulSoup(r.content)
-escapeRoomList = EscapeRoomList()
 
-# Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
-nEscapes = 100
 ids = 0
 
 if( nEscapes > 0 ):
@@ -317,6 +312,8 @@ for link in soup.find_all('loc'):
             companyInfo = [ ]
             companyInfo2 = [ ]
             room = requestWebPage(roomUrl, headers)
+            if images:
+                driver.get(roomUrl)
             roomSoup = BeautifulSoup(room.content)
             titleTag = roomSoup.find('h1')
 
@@ -449,14 +446,23 @@ for link in soup.find_all('loc'):
                                     escapeRoom.companyEmail = unique(companyInfo2[0:2])
                                     escapeRoom.companyWeb = "-"
                 
+                if images:
+                    time.sleep(1.5)
+                    imagenes  = driver.find_elements(By.XPATH,'//div[@class="col-4"]//img[@class="img-fluid img img-desktop-cvv"]')
+                    for img in imagenes:
+                        imgUrl = img.get_attribute('src')
+                        response = requests.get(imgUrl)
+                        file = open(excPath+"escapeImg/escape"+str(escapeRoom.id)+"_img.jpg", "wb")
+                        file.write(response.content)
+                        file.close()
+                    driver.get("about:blank")
+                    
                 # Mostra el progres a la consola
                 print(" <i> Escape num "+str(ids)+" - "+escapeRoom.name+" data has been retrieved <i>")
                 
-                escapeRoomList.addEscape(escapeRoom)
-                
-                
                 escapeRoomDf2 = {'id':escapeRoom.id,
                                     'name':escapeRoom.name,
+                                    'imgName':"escape"+str(escapeRoom.id)+"_img.jpg",
                                     'punctuation':escapeRoom.punctuation,
                                     'companyName':escapeRoom.companyName,
                                     'locZone':escapeRoom.locZone,
@@ -521,15 +527,13 @@ for link in soup.find_all('loc'):
                 
                 escapeRoomDf = escapeRoomDf.replace(specialCharactersReplacement, regex = True)
                 
-# Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
-# escapeRoomList.printAll()
 
 # Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
 
 #escapeRoomDf.head(n = 100)
 
 #print("CSV Export Started")
-escapeRoomDf.to_csv('EscapeRadar.csv', sep =';', encoding="utf-8") 
+escapeRoomDf.to_csv(excPath+'EscapeRadar.csv', sep =';', encoding="utf-8") 
 #print("CSV Export Finished")
 
 
@@ -549,5 +553,4 @@ escapeRoomDf.to_csv('EscapeRadar.csv', sep =';', encoding="utf-8")
 #
 #
 # Millores que podriem fer
-#   - Descargar imatges de la pagina web
 #   - Mirar la disponibilitat de més dies, no unicament els 6 dies següents
