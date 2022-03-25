@@ -23,8 +23,7 @@ from dateutil.relativedelta import relativedelta
 
 escapeRoomDf = pd.DataFrame(columns=['id','name','punctuation','companyName','locZone','nPlayers','timelapse',
 'lowPrice','highPrice','difLevel','audience','category','horror','address','action','adventure','cifi','childish',
-'investigation','scary','mistery','subtype','eOnline','eExterior','jPortatil','VR','eHall',
-'public','salavs','empresas','grups','family','kids',
+'investigation','scary','mistery','eOnline','eExterior','jPortatil','VR','eHall','salavs','empresas','grups','family','kids',
 'pregnant','english','funcDiversity','claustrofobia',
 'ptsComenGen','ptsComenAmbi','ptsComenEnig','ptsComenInm','ptsComenHorror','availableTimes','unavailableTimes',
 'companyAddress','companyPhone','companyEmail','companyWeb','state'])
@@ -301,7 +300,7 @@ soup = BeautifulSoup(r.content)
 escapeRoomList = EscapeRoomList()
 
 # Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
-nEscapes = 10
+nEscapes = 100
 ids = 0
 
 if( nEscapes > 0 ):
@@ -455,6 +454,7 @@ for link in soup.find_all('loc'):
                 
                 escapeRoomList.addEscape(escapeRoom)
                 
+                
                 escapeRoomDf2 = {'id':escapeRoom.id,
                                     'name':escapeRoom.name,
                                     'punctuation':escapeRoom.punctuation,
@@ -468,7 +468,7 @@ for link in soup.find_all('loc'):
                                     'audience':escapeRoom.audience,
                                     'category':escapeRoom.category,
                                     'horror':escapeRoom.horror,
-                                    'address':escapeRoom.address,
+                                    'address':escapeRoom.address.strip(),
                                     'action':escapeRoom.hasGenere('Acción'),
                                     'adventure':escapeRoom.hasGenere('Aventura'),
                                     'cifi':escapeRoom.hasGenere('Ciencia Ficción'),
@@ -476,14 +476,11 @@ for link in soup.find_all('loc'):
                                     'investigation':escapeRoom.hasGenere('Investigación'),
                                     'scary':escapeRoom.hasGenere('Miedo/Terror'),
                                     'mistery':escapeRoom.hasGenere('Misterio'),
-                                    'genre':str(escapeRoom.getGenre()),
                                     'eOnline':escapeRoom.hasSubtype('Escape Online'),
                                     'eHall':escapeRoom.hasSubtype('Escape Hall'),
                                     'eExterior':escapeRoom.hasSubtype('Escape Exterior'),
                                     'VR':escapeRoom.hasSubtype('VR Realidad Virtual'),
                                     'jPortatil':escapeRoom.hasSubtype('Juego Portátil'),
-                                    'subtype':str(escapeRoom.getSubType()),
-                                    'public':str(escapeRoom.getPublic()),
                                     'salavs':escapeRoom.hasPublic('SalaVsSala'),
                                     'empresas':escapeRoom.hasPublic('Empresas'),
                                     'grups':escapeRoom.hasPublic('Grupos'),
@@ -500,35 +497,50 @@ for link in soup.find_all('loc'):
                                     'ptsComenHorror':escapeRoom.comentsPts[4],
                                     'availableTimes':escapeRoom.availableTimes,
                                     'unavailableTimes':escapeRoom.unavailableTimes,
-                                    'companyAddress':pd.Series(escapeRoom.companyAddress),
-                                    'companyPhone':str(escapeRoom.companyPhone),
-                                    'companyEmail':str(escapeRoom.companyEmail),
-                                    'companyWeb':str(escapeRoom.companyWeb),
+                                    'companyAddress':(", ".join(list(escapeRoom.companyAddress))),
+                                    'companyPhone':(", ".join(list(escapeRoom.companyPhone))),
+                                    'companyEmail':(", ".join(list(escapeRoom.companyEmail))),
+                                    'companyWeb':(", ".join(list(escapeRoom.companyWeb))),
                                     'state':str(escapeRoom.state)}
                 
                 #escapeRoomDf = escapeRoomDf.append(escapeRoomDf2,ignore_index = True)
                 
                 escapeRoomDf = pd.concat([escapeRoomDf, pd.DataFrame.from_records([escapeRoomDf2])], ignore_index=True)
                 
+                specialCharactersReplacement = {
+                    "Â": "",
+                    "Ã“": "Ó",
+                    "Âº": "º",
+                    "Ã³": "ó",
+                    "Ã©": "é",
+                    "Ãº": "ú",
+                    "Ã±": "ñ",
+                    "â€™": "'",
+                    "Ã‰": "É"
+                }
+                
+                escapeRoomDf = escapeRoomDf.replace(specialCharactersReplacement, regex = True)
+                
 # Imprimir totes les dades de les escapes rooms obtingudes. Comentar a la versio final
 # escapeRoomList.printAll()
 
 # Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
 
-escapeRoomDf.head()
+#escapeRoomDf.head(n = 100)
 
 #print("CSV Export Started")
-#escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';', encoding="utf-8") 
+escapeRoomDf.to_csv('EscapeRadar.csv', sep =';', encoding="utf-8") 
 #print("CSV Export Finished")
 
 
 # Coses pendents:
 # J- Divir nPlayers en 2 camps de min i max (FET)
-# X- Que el separador dels valors numerics sigui un punt per tots (arreglar camp horror)
-# X- Intentar treure claudators (subtipus, i company CAMPS)
+# X- Que el separador dels valors numerics sigui un punt per tots (arreglar camp horror) FET
+# X- Intentar treure claudators (subtipus, i company CAMPS) FET
 # J- Dividir els generes en  8 columnes (FET)
 # J- Dividir el public en columnes (FET pero esta donant problemes la ñ de niños)
 # X- Exportar en UTF-8
+# X - Arreglar "state" i "companyPhone" quan agafen valors que no toca
 #
 # - Hauriem de mirar de eliminar coses rares sobretot al classificar entre generes, subtipus i public perque estan donant problemes
 #
