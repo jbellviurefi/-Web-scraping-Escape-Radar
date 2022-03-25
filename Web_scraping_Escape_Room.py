@@ -325,14 +325,17 @@ for link in soup.find_all('loc'):
                 nEscapes = nEscapes - 1
                 for child2 in titleTag.descendants:
                     escapeNameFull = child2
-                    escapeRoom.name = re.sub("[\(\[].*?[\)\]]", "", escapeNameFull)
-                    
-                    states = re.search(r'\((.*?)\)', escapeNameFull)
-                    
-                    if (states is not None):
-                        escapeRoom.state = states.group(1)
+                    if escapeNameFull.find('CERRADA TEMPORALMENTE') != -1:
+                        escapeRoom.name = re.sub("[\(\[]CERRADA TEMPORALMENTE[\)\]]", "", escapeNameFull)
+                        escapeRoom.state = "CERRADA TEMPORALMENTE"
+                        
+                    elif escapeNameFull.find('CERRADA') != -1:
+                        escapeRoom.name = re.sub("[\(\[]CERRADA[\)\]]", "", escapeNameFull)
+                        escapeRoom.state = "CERRADA"
+                        
                     else:
-                        escapeRoom.state = "Oberta"
+                        escapeRoom.name = escapeNameFull
+                        escapeRoom.state = "ABIERTA"
 
                 # Look for Escape Name and the zone where is located which are inside an "a" tag
                 companyTag = roomSoup.find_all('a')
@@ -430,8 +433,14 @@ for link in soup.find_all('loc'):
                                 if (pClass is None):
 
                                     companyInfo.append(child3.text)
-                                    escapeRoom.companyAddress = unique(companyInfo[0:2])
-                                    escapeRoom.companyPhone = unique(companyInfo[-1:])
+                                    
+                                    if (len(companyInfo)  >6 ):
+                                        escapeRoom.companyAddress = unique(companyInfo[0:2])
+                                        escapeRoom.companyPhone = unique(companyInfo[-1:])
+
+                                    else:
+                                        escapeRoom.companyAddress = unique(companyInfo[0:2])
+                                        escapeRoom.companyPhone = "-"
                                     
                             for child3 in child2.parent.find_all("a"):
                                 
@@ -541,14 +550,8 @@ print("*************************************************************************
 print("*  Final de execució                                                    *")
 print("*************************************************************************")
 
-# Coses pendents:
-# J- Divir nPlayers en 2 camps de min i max (FET)
-# X- Que el separador dels valors numerics sigui un punt per tots (arreglar camp horror) FET
-# X- Intentar treure claudators (subtipus, i company CAMPS) FET
-# J- Dividir els generes en  8 columnes (FET)
-# J- Dividir el public en columnes (FET pero esta donant problemes la ñ de niños)
-# X- Exportar en UTF-8
-# X - Arreglar "state" i "companyPhone" quan agafen valors que no toca
+
+# Per revisar:
 #
 # - Hauriem de mirar de eliminar coses rares sobretot al classificar entre generes, subtipus i public perque estan donant problemes
 #
