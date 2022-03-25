@@ -301,7 +301,7 @@ soup = BeautifulSoup(r.content)
 escapeRoomList = EscapeRoomList()
 
 # Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
-nEscapes = 72
+nEscapes = 10
 ids = 0
 
 if( nEscapes > 0 ):
@@ -360,7 +360,7 @@ for link in soup.find_all('loc'):
                             escapeRoom.punctuation = child3.replace(',','.')
                     if spanTagTitle == "Puntuación terror":
                         for child3 in spanTag.descendants:
-                            escapeRoom.horror = child3
+                            escapeRoom.horror = child3.replace(',','.')
                 
                 iTags = roomSoup.find_all('i')
                 for iTag in iTags:
@@ -515,11 +515,11 @@ for link in soup.find_all('loc'):
 
 # Conversió de les dades recolectades a CSV i grabació al fitxer de sortida
 
-escapeRoomDf
+escapeRoomDf.head()
 
-print("CSV Export Started")
-escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';', encoding="utf-8") 
-print("CSV Export Finished")
+#print("CSV Export Started")
+#escapeRoomDf.to_csv('C:/Users/jbell/Documents/EscapeRadar.csv', sep =';', encoding="utf-8") 
+#print("CSV Export Finished")
 
 
 # Coses pendents:
