@@ -27,14 +27,14 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 
 # Indicates the number of Escapes Rooms that are going to be collected. 0 to set to All
-nEscapes = 10
+nEscapes = 100000000000000000000
 # Indicates if images will be extracted or no
-images = True
+images = False
 # Indicates the path of the execution
 excPath = "C:/Users/jbell/Documents/"
 
-escapeRoomDf = pd.DataFrame(columns=['id','name','imgName','punctuation','companyName','locZone','minPlayer','maxPlayer','timelapse',
-'lowPrice','highPrice','difLevel','audience','category','horror','address','action','adventure','cifi','childish',
+escapeRoomDf = pd.DataFrame(columns=['id','name','imgName','hrefImg','punctuation','companyName','locZone','minPlayer','maxPlayer','timelapse',
+'lowPrice','highPrice','difLevel','audience','horror','address','action','adventure','cifi','childish',
 'investigation','scary','mistery','eOnline','eExterior','jPortatil','VR','eHall','salavs','empresas','grups','family','kids',
 'pregnant','english','funcDiversity','claustrofobia',
 'ptsComenGen','ptsComenAmbi','ptsComenEnig','ptsComenInm','ptsComenHorror','availableTimes','unavailableTimes',
@@ -92,6 +92,7 @@ class EscapeRoom:
     def __init__(self):
         self.id = -1
         self.name = " "
+        self.hrefImg = " "
         self.punctuation = " "
         self.companyName = " "
         self.locZone = " "
@@ -305,7 +306,7 @@ if( nEscapes > 0 ):
     
 for link in soup.find_all('loc'):
     for roomUrl in link.children:   
-        if "escaperadar.com/escape-room/" in roomUrl and nEscapes > 0:
+        if "escaperadar.com/escape-room/" in roomUrl and nEscapes >= 0:
         #if "www.escaperadar.com/escape-room/granollers-experience/bandidos" in roomUrl and h < 19:
             
             escapeRoom = EscapeRoom()
@@ -461,6 +462,7 @@ for link in soup.find_all('loc'):
                     for img in imagenes:
                         imgUrl = img.get_attribute('src')
                         response = requests.get(imgUrl)
+                        escapeRoom.hrefImg = imgUrl
                         file = open(excPath+"escapeImg/escape"+str(escapeRoom.id)+"_img.jpg", "wb")
                         file.write(response.content)
                         file.close()
@@ -472,6 +474,7 @@ for link in soup.find_all('loc'):
                 escapeRoomDf2 = {'id':escapeRoom.id,
                                     'name':escapeRoom.name,
                                     'imgName':"escape"+str(escapeRoom.id)+"_img.jpg",
+                                    'hrefImg':escapeRoom.hrefImg,
                                     'punctuation':escapeRoom.punctuation,
                                     'companyName':escapeRoom.companyName,
                                     'locZone':escapeRoom.locZone,
@@ -482,7 +485,6 @@ for link in soup.find_all('loc'):
                                     'highPrice':escapeRoom.highPrice,
                                     'difLevel':escapeRoom.difLevel,
                                     'audience':escapeRoom.audience,
-                                    'category':escapeRoom.category,
                                     'horror':escapeRoom.horror,
                                     'address':escapeRoom.address.strip(),
                                     'action':escapeRoom.hasGenere('Acción'),
